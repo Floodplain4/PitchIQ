@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="scoreboard-shell">
+    <div class="section-title-row">
+        <div>
+            <h2>Today's Games</h2>
+            <p class="muted">MLB pitching matchups, probable starters, and model previews.</p>
+        </div>
+    </div>
+
+    {% if games %}
+    <div class="scoreboard-strip">
+        {% for game in games %}
+        <a class="score-card" href="/matchup/{{ game.game_id }}">
+            <div class="game-time">{{ game.game_date[11:16] if game.game_date else "TBD" }} ET</div>
+
+            <div class="team-row">
+                <div class="team-left">
+                    <img src="{{ game.away.logo }}" alt="{{ game.away.abbr }}" class="mini-logo">
+                    <strong>{{ game.away.abbr }}</strong>
+                </div>
+                <span class="record">{{ game.away.record }}</span>
+            </div>
+
+            <div class="team-row">
+                <div class="team-left">
+                    <img src="{{ game.home.logo }}" alt="{{ game.home.abbr }}" class="mini-logo">
+                    <strong>{{ game.home.abbr }}</strong>
+                </div>
+                <span class="record">{{ game.home.record }}</span>
+            </div>
+
+            <div class="game-footer">{{ game.status }}</div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="game-grid">
+        {% for game in games %}
+        <a class="game-card enhanced" href="/matchup/{{ game.game_id }}">
+            <div class="brand-bar" style="background: linear-gradient(90deg, {{ game.away.primary }}, {{ game.home.primary }});"></div>
+
+            <div class="game-card-top">
+                <span class="status">{{ game.status }}</span>
+                <span class="venue">{{ game.venue }}</span>
+            </div>
+
+            <div class="matchup-teams">
+                <div class="team-block">
+                    <img src="{{ game.away.logo }}" alt="{{ game.away.abbr }}" class="team-logo">
+                    <div>
+                        <h3>{{ game.away.abbr }}</h3>
+                        <p>{{ game.away.name }}</p>
+                        <span>{{ game.away.record }}</span>
+                    </div>
+                </div>
+
+                <div class="at-symbol">@</div>
+
+                <div class="team-block right">
+                    <div>
+                        <h3>{{ game.home.abbr }}</h3>
+                        <p>{{ game.home.name }}</p>
+                        <span>{{ game.home.record }}</span>
+                    </div>
+                    <img src="{{ game.home.logo }}" alt="{{ game.home.abbr }}" class="team-logo">
+                </div>
+            </div>
+
+            <div class="pitcher-preview">
+                <div>
+                    <span>Away SP</span>
+                    <strong>{{ game.away.probable_pitcher }}</strong>
+                </div>
+                <div>
+                    <span>Home SP</span>
+                    <strong>{{ game.home.probable_pitcher }}</strong>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="warning">
+        No games loaded. This can happen during the offseason, before schedules are available, or if the MLB API is unreachable.
+    </div>
+    {% endif %}
+</section>
+
+{% endblock %}

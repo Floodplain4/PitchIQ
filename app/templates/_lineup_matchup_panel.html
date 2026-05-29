@@ -1,0 +1,67 @@
+<section class="card nested">
+    <h3>Batter-vs-Pitcher Lineup Detail</h3>
+    <p class="muted">
+        When official lineups are available, this section evaluates batter-vs-pitcher Statcast history.
+        Small samples are treated cautiously.
+    </p>
+
+    <div class="two-column">
+        <div class="context-card">
+            <span>{{ game.away.abbr }} Pitcher vs {{ game.home.abbr }} Lineup</span>
+            <strong>{{ prediction.away_lineup.lineup_score }}</strong>
+            <p>{{ prediction.away_lineup.summary }}</p>
+
+            {% if prediction.away_lineup.batters %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Batter</th>
+                        <th>PA</th>
+                        <th>Summary</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batter in prediction.away_lineup.batters %}
+                    <tr>
+                        <td>{{ batter.name }}</td>
+                        <td>{{ batter.pa }}</td>
+                        <td>{{ batter.summary }}</td>
+                        <td>{{ batter.score }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+
+        <div class="context-card">
+            <span>{{ game.home.abbr }} Pitcher vs {{ game.away.abbr }} Lineup</span>
+            <strong>{{ prediction.home_lineup.lineup_score }}</strong>
+            <p>{{ prediction.home_lineup.summary }}</p>
+
+            {% if prediction.home_lineup.batters %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Batter</th>
+                        <th>PA</th>
+                        <th>Summary</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batter in prediction.home_lineup.batters %}
+                    <tr>
+                        <td>{{ batter.name }}</td>
+                        <td>{{ batter.pa }}</td>
+                        <td>{{ batter.summary }}</td>
+                        <td>{{ batter.score }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+</section>

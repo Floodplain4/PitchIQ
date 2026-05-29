@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+    <h2>About the Model</h2>
+
+    <p>
+        PitchIQ is designed as a transparent sports analytics system. The goal is not to produce a black-box prediction,
+        but to show which factors contribute to a matchup projection.
+    </p>
+
+    <h3>Planned Factors</h3>
+
+    <ul>
+        <li>Recent pitcher form across the last several starts</li>
+        <li>Season-level pitching performance</li>
+        <li>Pitcher history in the current stadium</li>
+        <li>Batter-vs-pitcher history against the projected lineup</li>
+        <li>Opponent lineup performance against pitcher handedness</li>
+        <li>Weather impact: temperature, humidity, wind, pressure, and precipitation</li>
+        <li>Expected innings and quality start probability</li>
+    </ul>
+
+    <h3>Planned Outputs</h3>
+
+    <ul>
+        <li>Pitcher advantage</li>
+        <li>Team win probability</li>
+        <li>Expected innings</li>
+        <li>Strikeout projection</li>
+        <li>Quality start probability</li>
+        <li>Model confidence</li>
+    </ul>
+
+    <p class="muted">
+        PitchIQ is a sports analytics portfolio project. It is not gambling advice.
+    </p>
+</section>
+
+{% endblock %}

@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .context-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+        margin: 14px 0;
+    }
+
+    .context-card {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 12px;
+    }
+
+    .context-card span {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 900;
+    }
+
+    .context-card strong {
+        display: block;
+        font-size: 18px;
+        margin-top: 4px;
+    }
+
+    .context-card p {
+        margin: 6px 0 0;
+        color: #475569;
+        font-size: 13px;
+    }
+
+    .model-card {
+        margin-top: 16px;
+    }
+
+    .model-breakdown {
+        display: grid;
+        gap: 10px;
+    }
+
+    .model-row {
+        display: grid;
+        grid-template-columns: 220px 70px 80px 1fr 80px 100px;
+        align-items: center;
+        gap: 10px;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 10px 12px;
+    }
+
+    .model-row strong {
+        display: block;
+    }
+
+    .model-row span {
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .model-score {
+        font-weight: 900;
+        text-align: center;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 8px;
+    }
+
+    .edge-meter {
+        height: 12px;
+        background: linear-gradient(90deg, #b6c9ea 0%, #f8fafc 50%, #e85d75 100%);
+        border-radius: 999px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #d1d5db;
+    }
+
+    .edge-meter span {
+        display: block;
+        width: 3px;
+        height: 100%;
+        background: #111827;
+        margin-left: calc(var(--meter) * 1%);
+    }
+
+    .edge-label {
+        font-weight: 900;
+        font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+        .model-row {
+            grid-template-columns: 1fr;
+        }
+
+        .edge-meter span {
+            margin-left: 50%;
+        }
+    }
+</style>
+
+<section class="card matchup-page">
+    {% if game.error %}
+    <div class="warning">{{ game.error }}</div>
+    {% else %}
+
+    <div class="hero-matchup" style="--away-color: {{ game.away.primary }}; --home-color: {{ game.home.primary }};">
+        <div class="hero-team">
+            <img src="{{ game.away.logo }}" alt="{{ game.away.abbr }}">
+            <span>{{ game.away.record }}</span>
+            <h2>{{ game.away.abbr }}</h2>
+            <p>{{ game.away.name }}</p>
+        </div>
+
+        <div class="hero-center">
+            <div class="game-state">{{ game.status }}</div>
+            <div class="versus">@</div>
+            <div class="venue-line">{{ game.venue }}</div>
+        </div>
+
+        <div class="hero-team right">
+            <img src="{{ game.home.logo }}" alt="{{ game.home.abbr }}">
+            <span>{{ game.home.record }}</span>
+            <h2>{{ game.home.abbr }}</h2>
+            <p>{{ game.home.name }}</p>
+        </div>
+    </div>
+
+    <div class="advantage-ribbon">
+        <span>Pitcher Advantage</span>
+        <strong>{{ prediction.pitcher_advantage }} +{{ prediction.edge_amount }}</strong>
+        <em>Confidence: {{ prediction.confidence }}</em>
+    </div>
+
+    <div class="savant-legend">
+        <span>Weak</span>
+        <span class="legend-chip legend-poor"></span>
+        <span class="legend-chip legend-neutral"></span>
+        <span class="legend-chip legend-elite"></span>
+        <span>Strong</span>
+    </div>
+
+    <div class="two-column">
+        {% for side, team, pitcher, score, win_prob, expected_ip, k_proj, qs_prob, profile in [
+            ('away', game.away, game.away_pitcher, prediction.away_pitchiq_score, prediction.away_win_probability, prediction.expected_away_pitcher_innings, prediction.away_strikeout_projection, prediction.away_quality_start_probability, prediction.away_profile),
+            ('home', game.home, game.home_pitcher, prediction.home_pitchiq_score, prediction.home_win_probability, prediction.expected_home_pitcher_innings, prediction.home_strikeout_projection, prediction.home_quality_start_probability, prediction.home_profile)
+        ] %}
+        <div class="pitcher-card branded savant-card" style="border-top-color: {{ team.primary }};">
+            <div class="pitcher-heading player-heading">
+                <img src="{{ profile.headshot }}" alt="{{ pitcher }}" class="player-headshot">
+                <div>
+                    <h3>{{ team.name }}</h3>
+                    <p class="pitcher-name">{{ pitcher }}</p>
+                    <span class="data-quality">{{ profile.data_quality }}</span>
+                </div>
+            </div>
+
+            <div class="metric-grid main-metrics">
+                <div class="heat heat-neutral" data-percentile=""><span>PitchIQ</span><strong>{{ score }}</strong></div>
+                <div class="heat heat-neutral" data-percentile=""><span>Win Probability</span><strong>{{ win_prob }}%</strong></div>
+                <div class="heat heat-neutral" data-percentile=""><span>Expected IP</span><strong>{{ expected_ip }}</strong></div>
+                <div class="heat heat-neutral" data-percentile=""><span>K Projection</span><strong>{{ k_proj }}</strong></div>
+                <div class="heat heat-neutral" data-percentile=""><span>Quality Start</span><strong>{{ qs_prob }}%</strong></div>
+                <div><span>Model Role</span><strong>{{ "Away SP" if side == "away" else "Home SP" }}</strong></div>
+            </div>
+
+            <div class="savant-section">
+                <h4>Traditional</h4>
+                <div class="mini-stat-row">
+                    {% for stat in profile.traditional %}
+                    <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
+                        <span>{{ stat.label }}</span>
+                        <strong>{{ stat.value }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="savant-section">
+                <h4>Recent Form</h4>
+                <div class="mini-stat-row">
+                    {% for stat in profile.recent_form %}
+                    <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
+                        <span>{{ stat.label }}</span>
+                        <strong>{{ stat.value }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="savant-section">
+                <h4>Statcast Quality</h4>
+                <div class="mini-stat-row">
+                    {% for stat in profile.statcast %}
+                    <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
+                        <span>{{ stat.label }}</span>
+                        <strong>{{ stat.value }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="savant-section">
+                <h4>Batted Ball Profile</h4>
+                <div class="mini-stat-row">
+                    {% for stat in profile.batted_ball %}
+                    <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
+                        <span>{{ stat.label }}</span>
+                        <strong>{{ stat.value }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="savant-section">
+                <h4>Plate Discipline</h4>
+                <div class="mini-stat-row">
+                    {% for stat in profile.plate_discipline %}
+                    <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
+                        <span>{{ stat.label }}</span>
+                        <strong>{{ stat.value }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="savant-section">
+                <h4>Pitch Arsenal</h4>
+                <div class="arsenal-list">
+                    {% for pitch in profile.arsenal %}
+                    <div class="arsenal-row">
+                        <div class="arsenal-name">{{ pitch.pitch }}</div>
+                        <div class="arsenal-bar">
+                            <span style="width: {{ pitch.usage }}%; background: {{ team.primary }};"></span>
+                        </div>
+                        <div class="arsenal-meta">{{ pitch.usage }}% | {{ pitch.velocity }} mph | {{ pitch.whiff }}% whiff</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <section class="card nested">
+        <h3>Environment & Matchup Context</h3>
+        <div class="context-grid">
+            <div class="context-card">
+                <span>Ballpark Context</span>
+                <strong>{{ prediction.venue_context.park_score }}</strong>
+                <p>{{ prediction.venue_context.notes }}</p>
+                <p>Run Factor: {{ prediction.venue_context.run_factor }} | HR Factor: {{ prediction.venue_context.hr_factor }}</p>
+            </div>
+
+            <div class="context-card">
+                <span>Weather</span>
+                <strong>{{ prediction.away_weather.weather_score }}</strong>
+                <p>{{ prediction.away_weather.summary }}</p>
+            </div>
+
+            <div class="context-card">
+                <span>Lineup Matchup</span>
+                <strong>{{ prediction.away_lineup.lineup_score }} / {{ prediction.home_lineup.lineup_score }}</strong>
+                <p>{{ prediction.away_lineup.summary }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="card nested model-card">
+        <h3>PitchIQ Model Breakdown</h3>
+        <p class="muted">
+            Red side favors the home pitcher. Blue side favors the away pitcher. Weather and park context are now included.
+            Lineup matchup is scaffolded until confirmed lineup + batter-vs-pitcher data is connected.
+        </p>
+
+        <div class="model-breakdown">
+            {% for item in prediction.score_breakdown %}
+            <div class="model-row">
+                <div>
+                    <strong>{{ item.label }}</strong>
+                    <span>{{ item.weight }} weight</span>
+                </div>
+
+                <div class="model-score">{{ game.away.abbr }}</div>
+                <div class="model-score">{{ item.away }}</div>
+
+                <div class="edge-meter" style="--meter: {{ item.meter }};">
+                    <span></span>
+                </div>
+
+                <div class="model-score">{{ item.home }}</div>
+
+                <div class="edge-label">
+                    {% if item.edge > 0 %}
+                        {{ game.home.abbr }} +{{ item.edge }}
+                    {% elif item.edge < 0 %}
+                        {{ game.away.abbr }} +{{ -item.edge }}
+                    {% else %}
+                        Even
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</section>
+
+{% endblock %}
