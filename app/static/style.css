@@ -687,3 +687,24 @@ th {
         grid-template-columns: 1fr;
     }
 }
+footer {
+    margin: 24px 18px 18px;
+    padding: 16px 18px;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 14px;
+    color: #334155;
+    font-size: 13px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
+}
+
+footer strong {
+    color: #0f172a;
+    margin-right: 6px;
+}
+
+footer span {
+    display: block;
+    margin-top: 4px;
+    color: #64748b;
+}

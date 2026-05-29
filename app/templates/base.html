@@ -2,15 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>PitchIQ</title>
-    <link rel="stylesheet" href="/static/style.css">
+
+    <link rel="icon"
+          href="{{ url_for('static', path='favicon.svg') }}"
+          type="image/svg+xml">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', path='style.css') }}">
 </head>
+
 <body>
 <header>
     <div>
         <h1>⚾ PitchIQ</h1>
         <p>MLB Pitching Matchup Intelligence</p>
     </div>
+
     <nav>
         <a href="/">Today's Games</a>
         <a href="/about-model">Model</a>
@@ -20,5 +29,11 @@
 <main>
     {% block content %}{% endblock %}
 </main>
+
+<footer>
+    <strong>PitchIQ</strong> © 2026 Tyler Ledbetter
+    <span>MLB pitching matchup intelligence powered by public baseball and weather data.</span>
+</footer>
+
 </body>
 </html>
