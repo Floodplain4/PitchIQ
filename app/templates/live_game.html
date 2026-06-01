@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card live-page" data-game-id="{{ game.game_id }}">
+    <div class="section-title-row">
+        <div>
+            <h2>Live Game Center</h2>
+            <p class="muted">{{ live.away.name }} @ {{ live.home.name }} · {{ live.venue }}</p>
+        </div>
+        <div class="live-refresh">
+            <span id="live-status">{{ live.status }}</span>
+            <small>Auto-refreshes every 60 seconds</small>
+        </div>
+    </div>
+
+    <div class="live-scoreboard">
+        <div class="live-team">
+            <img id="away-logo" src="{{ live.away.logo }}" alt="{{ live.away.abbr }}">
+            <span id="away-abbr">{{ live.away.abbr }}</span>
+            <strong id="away-runs">{{ live.away.runs }}</strong>
+            <small id="away-line">H {{ live.away.hits }} · E {{ live.away.errors }}</small>
+        </div>
+
+        <div class="live-inning">
+            <span id="inning-state">{{ live.half_inning or '' }} {{ live.inning_ordinal or '' }}</span>
+            <strong id="count-state">{{ live.balls }}-{{ live.strikes }}</strong>
+            <small id="outs-state">{{ live.outs }} out{{ '' if live.outs == 1 else 's' }}</small>
+
+            <div class="base-diamond" aria-label="base state">
+                <span id="base-second" class="{{ 'occupied' if live.on_second else '' }}"></span>
+                <span id="base-third" class="{{ 'occupied' if live.on_third else '' }}"></span>
+                <span id="base-first" class="{{ 'occupied' if live.on_first else '' }}"></span>
+            </div>
+        </div>
+
+        <div class="live-team right">
+            <img id="home-logo" src="{{ live.home.logo }}" alt="{{ live.home.abbr }}">
+            <span id="home-abbr">{{ live.home.abbr }}</span>
+            <strong id="home-runs">{{ live.home.runs }}</strong>
+            <small id="home-line">H {{ live.home.hits }} · E {{ live.home.errors }}</small>
+        </div>
+    </div>
+
+    <div class="context-grid">
+        <div class="context-card">
+            <span>Current Batter</span>
+            <strong id="current-batter">{{ live.current_batter or 'Pregame / unavailable' }}</strong>
+        </div>
+
+        <div class="context-card">
+            <span>Current Pitcher</span>
+            <strong id="current-pitcher">{{ live.current_pitcher or live.defense_pitcher or 'Pregame / unavailable' }}</strong>
+        </div>
+
+        <div class="context-card">
+            <span>Last Event</span>
+            <strong id="last-event">{{ live.last_event or 'No event yet' }}</strong>
+            <p id="last-description">{{ live.last_description }}</p>
+        </div>
+    </div>
+</section>
+
+<section class="card">
+    <h3>PitchIQ Pregame Model</h3>
+    <div class="metric-grid main-metrics">
+        <div>
+            <span>{{ game.away.abbr }} PitchIQ</span>
+            <strong>{{ prediction.away_pitchiq_score }}</strong>
+        </div>
+        <div>
+            <span>{{ game.home.abbr }} PitchIQ</span>
+            <strong>{{ prediction.home_pitchiq_score }}</strong>
+        </div>
+        <div>
+            <span>Pitching Lean</span>
+            <strong>{{ prediction.matchup_lean.summary }}</strong>
+        </div>
+    </div>
+    <p class="muted">
+        Live score data updates every 60 seconds. The current model shown here is still a pregame pitching model;
+        the next step is adding in-game adjustment logic from pitch-by-pitch results.
+    </p>
+</section>
+
+<section class="card">
+    <h3>Recent Plays</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Inning</th>
+                <th>Batter</th>
+                <th>Pitcher</th>
+                <th>Result</th>
+            </tr>
+        </thead>
+        <tbody id="recent-plays">
+            {% for play in live.recent_plays %}
+            <tr>
+                <td>{{ play.half }} {{ play.inning }}</td>
+                <td>{{ play.batter }}</td>
+                <td>{{ play.pitcher }}</td>
+                <td>{{ play.description }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="muted">No plays available yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<script>
+const gameId = document.querySelector(".live-page").dataset.gameId;
+
+function setBase(id, occupied) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle("occupied", Boolean(occupied));
+}
+
+function renderRecentPlays(plays) {
+    const body = document.getElementById("recent-plays");
+    if (!body) return;
+
+    if (!plays || plays.length === 0) {
+        body.innerHTML = '<tr><td colspan="4" class="muted">No plays available yet.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = plays.map(play => `
+        <tr>
+            <td>${play.half || ""} ${play.inning || ""}</td>
+            <td>${play.batter || ""}</td>
+            <td>${play.pitcher || ""}</td>
+            <td>${play.description || ""}</td>
+        </tr>
+    `).join("");
+}
+
+async function refreshLiveGame() {
+    try {
+        const response = await fetch(`/api/live/${gameId}`, { cache: "no-store" });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.error) return;
+
+        document.getElementById("live-status").textContent = data.status || "Unknown";
+
+        document.getElementById("away-runs").textContent = data.away?.runs ?? 0;
+        document.getElementById("home-runs").textContent = data.home?.runs ?? 0;
+        document.getElementById("away-line").textContent = `H ${data.away?.hits ?? 0} · E ${data.away?.errors ?? 0}`;
+        document.getElementById("home-line").textContent = `H ${data.home?.hits ?? 0} · E ${data.home?.errors ?? 0}`;
+
+        document.getElementById("inning-state").textContent = `${data.half_inning || ""} ${data.inning_ordinal || ""}`.trim();
+        document.getElementById("count-state").textContent = `${data.balls ?? 0}-${data.strikes ?? 0}`;
+        document.getElementById("outs-state").textContent = `${data.outs ?? 0} ${(data.outs === 1) ? "out" : "outs"}`;
+
+        document.getElementById("current-batter").textContent = data.current_batter || "Pregame / unavailable";
+        document.getElementById("current-pitcher").textContent = data.current_pitcher || data.defense_pitcher || "Pregame / unavailable";
+        document.getElementById("last-event").textContent = data.last_event || "No event yet";
+        document.getElementById("last-description").textContent = data.last_description || "";
+
+        setBase("base-first", data.on_first);
+        setBase("base-second", data.on_second);
+        setBase("base-third", data.on_third);
+
+        renderRecentPlays(data.recent_plays);
+    } catch (error) {
+        console.warn("Live refresh failed", error);
+    }
+}
+
+setInterval(refreshLiveGame, 60000);
+</script>
+
+{% endblock %}

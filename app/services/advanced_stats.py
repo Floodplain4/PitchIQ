@@ -1,5 +1,6 @@
 import hashlib
 from app.services.player_assets import player_headshot_url
+from app.services.savant_api import fetch_pitcher_statcast, summarize_pitcher_statcast
 
 
 PITCH_TYPES = ["4-Seam", "Sinker", "Cutter", "Slider", "Change", "Curve", "Splitter"]
@@ -116,7 +117,7 @@ def stat_items(stats: dict) -> list[dict]:
     return [stat_item(label, value) for label, value in stats.items()]
 
 
-def _pitch_arsenal(player_id: int | None) -> list[dict]:
+def _deterministic_pitch_arsenal(player_id: int | None) -> list[dict]:
     raw = []
     for pitch in PITCH_TYPES:
         usage = _bounded(player_id, f"usage-{pitch}", 0, 35, 1)
@@ -143,36 +144,11 @@ def _pitch_arsenal(player_id: int | None) -> list[dict]:
     return arsenal
 
 
-def get_pitcher_profile(player_id: int | None, player_name: str = "TBD") -> dict:
-    if not player_id:
-        return {
-            "id": None,
-            "name": player_name,
-            "headshot": player_headshot_url(None),
-            "data_quality": "Missing probable pitcher ID",
-            "traditional": [],
-            "recent_form": [],
-            "statcast": [],
-            "batted_ball": [],
-            "plate_discipline": [],
-            "arsenal": [],
-            "component_scores": {
-                "Season Performance": 50.0,
-                "Recent Form": 50.0,
-                "Statcast Quality": 50.0,
-                "Command / Whiff": 50.0,
-                "Weather Impact": 50.0,
-                "Lineup Matchup": 50.0,
-                "Park Context": 50.0,
-            },
-            "raw": {
-                "traditional": {},
-                "recent_form": {},
-                "statcast": {},
-                "plate_discipline": {},
-            },
-        }
+def _clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
 
+
+def _fallback_raw(player_id: int | None) -> tuple[dict, dict, dict, dict, dict, list[dict]]:
     traditional_raw = {
         "ERA": _bounded(player_id, "era", 2.45, 5.45, 2),
         "WHIP": _bounded(player_id, "whip", 1.02, 1.52, 2),
@@ -217,48 +193,181 @@ def get_pitcher_profile(player_id: int | None, player_name: str = "TBD") -> dict
         "K%": _bounded(player_id, "kpercent", 17, 32, 1),
     }
 
+    return traditional_raw, recent_raw, statcast_raw, batted_ball_raw, discipline_raw, _deterministic_pitch_arsenal(player_id)
+
+
+def _apply_real_statcast(player_id: int | None, fallback: tuple[dict, dict, dict, dict, dict, list[dict]]) -> tuple[dict, dict, dict, dict, dict, list[dict], dict]:
+    traditional_raw, recent_raw, statcast_raw, batted_ball_raw, discipline_raw, arsenal = fallback
+
+    df = fetch_pitcher_statcast(player_id, ttl_hours=12)
+    summary = summarize_pitcher_statcast(df)
+
+    if not summary.get("available") or summary.get("sample_pitches", 0) < 50:
+        return traditional_raw, recent_raw, statcast_raw, batted_ball_raw, discipline_raw, arsenal, summary
+
+    pa = max(summary.get("plate_appearances_est", 1), 1)
+    ip_est = max(summary.get("innings_est", 1.0), 1.0)
+
+    k_pct = summary.get("k_pct")
+    bb_pct = summary.get("bb_pct")
+    whiff_pct = summary.get("whiff_pct")
+    chase_pct = summary.get("chase_pct")
+    zone_pct = summary.get("zone_pct")
+    first_pitch_strike_pct = summary.get("first_pitch_strike_pct")
+
+    if k_pct is not None:
+        traditional_raw["K/9"] = round(_clamp((k_pct / 100) * 4.25 * 9, 4.0, 15.0), 1)
+        discipline_raw["K%"] = round(k_pct, 1)
+
+    if bb_pct is not None:
+        traditional_raw["BB/9"] = round(_clamp((bb_pct / 100) * 4.25 * 9, 0.5, 6.5), 1)
+        discipline_raw["BB%"] = round(bb_pct, 1)
+
+    if summary.get("hr") is not None:
+        traditional_raw["HR/9"] = round(_clamp((summary.get("hr", 0) / ip_est) * 9, 0.0, 3.2), 1)
+
+    if summary.get("strikeouts") is not None and summary.get("walks") is not None and summary.get("hr") is not None:
+        fip = ((13 * summary.get("hr", 0)) + (3 * summary.get("walks", 0)) - (2 * summary.get("strikeouts", 0))) / ip_est + 3.10
+        traditional_raw["FIP"] = round(_clamp(fip, 2.0, 6.5), 2)
+
+    if summary.get("hits") is not None and summary.get("walks") is not None:
+        traditional_raw["WHIP"] = round(_clamp((summary.get("hits", 0) + summary.get("walks", 0)) / ip_est, 0.70, 1.90), 2)
+
+    # Statcast-quality metrics from real Baseball Savant CSV.
+    if summary.get("xwoba") is not None:
+        statcast_raw["xwOBA"] = summary["xwoba"]
+    if summary.get("xba") is not None:
+        statcast_raw["xBA"] = summary["xba"]
+    if summary.get("xslg") is not None:
+        statcast_raw["xSLG"] = summary["xslg"]
+    if summary.get("hard_hit_pct") is not None:
+        statcast_raw["HardHit%"] = summary["hard_hit_pct"]
+    if summary.get("barrel_pct") is not None:
+        statcast_raw["Barrel%"] = summary["barrel_pct"]
+    if summary.get("avg_ev") is not None:
+        statcast_raw["Avg EV"] = summary["avg_ev"]
+
+    # Batted-ball profile from launch angle buckets.
+    if summary.get("gb_pct") is not None:
+        batted_ball_raw["GB%"] = summary["gb_pct"]
+    if summary.get("fb_pct") is not None:
+        batted_ball_raw["FB%"] = summary["fb_pct"]
+    if summary.get("ld_pct") is not None:
+        batted_ball_raw["LD%"] = summary["ld_pct"]
+
+    # Plate discipline from pitch-level Statcast.
+    if zone_pct is not None:
+        discipline_raw["Zone%"] = zone_pct
+    if chase_pct is not None:
+        discipline_raw["Chase%"] = chase_pct
+    if whiff_pct is not None:
+        discipline_raw["Whiff%"] = whiff_pct
+    if first_pitch_strike_pct is not None:
+        discipline_raw["1stPitchS%"] = first_pitch_strike_pct
+
+    # Recent-start sample from real game-level Statcast grouping when available.
+    recent = summary.get("recent", {})
+    if recent:
+        if recent.get("last_3_k") is not None:
+            recent_raw["Last 3 K"] = int(recent["last_3_k"])
+        if recent.get("avg_ip") is not None:
+            recent_raw["Avg IP"] = recent["avg_ip"]
+        if recent.get("avg_pitch_count") is not None:
+            recent_raw["Avg Pitch Count"] = int(recent["avg_pitch_count"])
+
+    if summary.get("pitch_arsenal"):
+        arsenal = summary["pitch_arsenal"]
+
+    return traditional_raw, recent_raw, statcast_raw, batted_ball_raw, discipline_raw, arsenal, summary
+
+
+def get_pitcher_profile(player_id: int | None, player_name: str = "TBD") -> dict:
+    if not player_id:
+        return {
+            "id": None,
+            "name": player_name,
+            "headshot": player_headshot_url(None),
+            "data_quality": "Missing probable pitcher ID",
+            "traditional": [],
+            "recent_form": [],
+            "statcast": [],
+            "batted_ball": [],
+            "plate_discipline": [],
+            "arsenal": [],
+            "component_scores": {
+                "Season Performance": 50.0,
+                "Recent Form": 50.0,
+                "Statcast Quality": 50.0,
+                "Command / Whiff": 50.0,
+                "Weather Impact": 50.0,
+                "Lineup Matchup": 50.0,
+                "Park Context": 50.0,
+            },
+            "raw": {
+                "traditional": {},
+                "recent_form": {},
+                "statcast": {},
+                "plate_discipline": {},
+            },
+            "statcast_summary": {"available": False, "sample_pitches": 0},
+        }
+
+    fallback = _fallback_raw(player_id)
+    traditional_raw, recent_raw, statcast_raw, batted_ball_raw, discipline_raw, arsenal, statcast_summary = _apply_real_statcast(player_id, fallback)
+
     scores = calculate_component_scores(traditional_raw, recent_raw, statcast_raw, discipline_raw)
+
+    available = statcast_summary.get("available")
+    sample_pitches = statcast_summary.get("sample_pitches", 0)
+    if available:
+        data_quality = f"Real Statcast profile · {sample_pitches} pitches sampled"
+    else:
+        data_quality = "Statcast unavailable · deterministic fallback profile"
 
     return {
         "id": player_id,
         "name": player_name,
         "headshot": player_headshot_url(player_id),
-        "data_quality": "MVP deterministic profile; real Statcast pipeline planned",
+        "data_quality": data_quality,
         "traditional": stat_items(traditional_raw),
         "recent_form": stat_items(recent_raw),
         "statcast": stat_items(statcast_raw),
         "batted_ball": stat_items(batted_ball_raw),
         "plate_discipline": stat_items(discipline_raw),
-        "arsenal": _pitch_arsenal(player_id),
+        "arsenal": arsenal,
         "component_scores": scores,
         "raw": {
             "traditional": traditional_raw,
             "recent_form": recent_raw,
             "statcast": statcast_raw,
+            "batted_ball": batted_ball_raw,
             "plate_discipline": discipline_raw,
         },
+        "statcast_summary": statcast_summary,
     }
 
 
 def calculate_component_scores(traditional: dict, recent: dict, statcast: dict, discipline: dict) -> dict:
     season_score = (
-        _score_lower_better(traditional["ERA"], 2.50, 5.50) * .35
-        + _score_lower_better(traditional["WHIP"], 1.00, 1.55) * .25
-        + _score_lower_better(traditional["FIP"], 2.70, 5.30) * .20
-        + _score_higher_better(traditional["K/9"], 6.0, 12.5) * .20
+        _score_lower_better(traditional["ERA"], 2.50, 5.50) * .20
+        + _score_lower_better(traditional["WHIP"], 1.00, 1.55) * .18
+        + _score_lower_better(traditional["FIP"], 2.70, 5.30) * .27
+        + _score_higher_better(traditional["K/9"], 6.0, 12.5) * .22
+        + _score_lower_better(traditional["BB/9"], 1.50, 4.80) * .13
     )
 
     form_score = (
-        _score_lower_better(recent["Last 3 ERA"], 1.80, 6.50) * .30
-        + _score_lower_better(recent["Last 3 WHIP"], .85, 1.70) * .25
-        + _score_higher_better(recent["Last 3 K"], 9, 28) * .20
-        + _score_higher_better(recent["Avg IP"], 4.5, 7.0) * .15
-        + _score_higher_better(recent["Velocity Trend"], -1.5, 1.7) * .10
+        _score_lower_better(recent["Last 3 ERA"], 1.80, 6.50) * .20
+        + _score_lower_better(recent["Last 3 WHIP"], .85, 1.70) * .20
+        + _score_higher_better(recent["Last 3 K"], 9, 28) * .16
+        + _score_higher_better(recent["Avg IP"], 4.5, 7.0) * .24
+        + _score_higher_better(recent["Avg Pitch Count"], 70, 105) * .12
+        + _score_higher_better(recent["Velocity Trend"], -1.5, 1.7) * .08
     )
 
     statcast_score = (
-        _score_lower_better(statcast["xwOBA"], .275, .370) * .28
-        + _score_lower_better(statcast["xBA"], .205, .285) * .18
+        _score_lower_better(statcast["xwOBA"], .275, .370) * .30
+        + _score_lower_better(statcast["xBA"], .205, .285) * .16
         + _score_lower_better(statcast["xSLG"], .330, .485) * .18
         + _score_lower_better(statcast["HardHit%"], 31, 47) * .14
         + _score_lower_better(statcast["Barrel%"], 4.5, 11.8) * .14
@@ -266,10 +375,11 @@ def calculate_component_scores(traditional: dict, recent: dict, statcast: dict, 
     )
 
     command_score = (
-        _score_higher_better(discipline["K%"], 17, 32) * .30
-        + _score_lower_better(discipline["BB%"], 5.5, 12) * .25
-        + _score_higher_better(discipline["Chase%"], 24, 38) * .20
-        + _score_higher_better(discipline["Whiff%"], 18, 35) * .25
+        _score_higher_better(discipline["K%"], 17, 32) * .34
+        + _score_lower_better(discipline["BB%"], 5.5, 12) * .22
+        + _score_higher_better(discipline["Chase%"], 24, 38) * .18
+        + _score_higher_better(discipline["Whiff%"], 18, 35) * .22
+        + _score_higher_better(discipline["1stPitchS%"], 55, 68) * .04
     )
 
     return {

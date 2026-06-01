@@ -204,6 +204,72 @@
             left: 20px;
         }
     }
+
+    .ai-summary-card {
+        margin: 14px 0;
+        background: linear-gradient(135deg, #f8fafc, #eef2ff);
+        border: 1px solid #c7d2fe;
+        border-left: 5px solid #6366f1;
+        border-radius: 14px;
+        padding: 14px 16px;
+    }
+
+    .ai-summary-card .ai-kicker {
+        display: block;
+        color: #4f46e5;
+        font-size: 12px;
+        text-transform: uppercase;
+        font-weight: 900;
+        letter-spacing: .05em;
+    }
+
+    .ai-summary-card h3 {
+        margin: 4px 0 8px;
+        color: #111827;
+    }
+
+    .ai-summary-card p {
+        color: #334155;
+        margin: 0 0 10px;
+        line-height: 1.45;
+    }
+
+    .ai-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 12px;
+        margin-top: 10px;
+    }
+
+    .ai-summary-card ul {
+        margin: 6px 0 0;
+        padding-left: 18px;
+        color: #334155;
+    }
+
+    .ai-summary-card li {
+        margin: 4px 0;
+    }
+
+    .ai-warning {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .ai-factors {
+        background: #ffffff;
+        border: 1px solid #dbeafe;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .ai-summary-card .muted {
+        font-size: 12px;
+        margin-top: 8px;
+    }
+
 </style>
 
 {% macro tip(label) -%}
@@ -242,6 +308,39 @@
         <strong>{{ prediction.pitcher_advantage }} +{{ prediction.edge_amount }}</strong>
         <em>Confidence: {{ prediction.confidence }}</em>
     </div>
+
+
+    {% if ai_summary %}
+    <section class="ai-summary-card">
+        <span class="ai-kicker">AI Matchup Summary</span>
+        <h3>{{ ai_summary.headline }}</h3>
+        <p>{{ ai_summary.summary }}</p>
+
+        <div class="ai-summary-grid">
+            <div class="ai-factors">
+                <strong>Key factors</strong>
+                <ul>
+                    {% for factor in ai_summary.key_factors %}
+                    <li>{{ factor }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="ai-warning">
+                <strong>Model checks</strong>
+                <ul>
+                    {% for warning in ai_summary.warnings %}
+                    <li>{{ warning }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        {% if not ai_summary.available %}
+        <p class="muted">Fallback summary shown. {{ ai_summary.reason }}</p>
+        {% endif %}
+    </section>
+    {% endif %}
 
     <div class="savant-legend">
         <span>Weak</span>

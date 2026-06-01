@@ -710,13 +710,27 @@ footer span {
 }
 
 
-/* ===== Compact professional homepage card layout ===== */
+/* ===== Restore original PitchIQ lean badge style only ===== */
+/* Top matchup team logos remain official MLB logos. Only lean badges/scoreboard lean dots are styled. */
 
-/* Undo previous stretched-card behavior */
+.game-card.enhanced .team-logo {
+    width: 48px !important;
+    height: 48px !important;
+    object-fit: contain !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+/* Original compact card rhythm from the version you liked */
 .game-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-    gap: 14px;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)) !important;
+    gap: 14px !important;
     align-items: start !important;
 }
 
@@ -724,6 +738,7 @@ footer span {
     display: block !important;
     height: auto !important;
     min-height: 0 !important;
+    overflow: hidden !important;
 }
 
 .game-card.enhanced .matchup-teams {
@@ -731,11 +746,6 @@ footer span {
     height: 118px !important;
     padding: 12px 14px !important;
     align-items: center !important;
-}
-
-.game-card.enhanced .team-logo {
-    width: 48px !important;
-    height: 48px !important;
 }
 
 .game-card.enhanced .team-block h3 {
@@ -769,7 +779,7 @@ footer span {
     line-height: 1.15 !important;
 }
 
-/* Compact lean panel */
+/* Old lean panel layout */
 .game-card.enhanced .lean-badge {
     min-height: 82px !important;
     height: 82px !important;
@@ -795,16 +805,66 @@ footer span {
     justify-content: center !important;
 }
 
+/* This is the original baseball-filling look from the good version */
 .game-card.enhanced .lean-ball {
     width: 54px !important;
     height: 54px !important;
     margin: 0 auto !important;
+    border-radius: 50% !important;
+    background:
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,.96) 0 11%, transparent 12%),
+        linear-gradient(135deg, var(--lean-color), #ffffff 78%) !important;
+    background-image:
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,.96) 0 11%, transparent 12%),
+        linear-gradient(135deg, var(--lean-color), #ffffff 78%) !important;
+    border: 3px solid var(--lean-color) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     box-shadow: 0 5px 12px rgba(15, 23, 42, .16) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+/* Recreate the baseball seam effect from the version you liked */
+.game-card.enhanced .lean-ball::before,
+.game-card.enhanced .lean-ball::after {
+    content: "" !important;
+    display: block !important;
+    position: absolute !important;
+    width: 42px !important;
+    height: 80px !important;
+    border: 2px dashed rgba(185, 28, 28, .45) !important;
+    border-radius: 50% !important;
+    top: -11px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.game-card.enhanced .lean-ball::before {
+    left: -28px !important;
+}
+
+.game-card.enhanced .lean-ball::after {
+    right: -28px !important;
 }
 
 .game-card.enhanced .lean-ball img {
     width: 34px !important;
     height: 34px !important;
+    object-fit: contain !important;
+    position: relative !important;
+    z-index: 2 !important;
+    background: transparent !important;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,.2)) !important;
+    mix-blend-mode: normal !important;
+    opacity: 1 !important;
+}
+
+.game-card.enhanced .lean-ball.even {
+    background: linear-gradient(135deg, #e5e7eb, #ffffff) !important;
+    background-image: linear-gradient(135deg, #e5e7eb, #ffffff) !important;
+    border-color: #94a3b8 !important;
 }
 
 .game-card.enhanced .lean-content {
@@ -813,31 +873,89 @@ footer span {
 }
 
 .game-card.enhanced .lean-badge span {
+    display: block !important;
     font-size: 10px !important;
     line-height: 1.1 !important;
+    text-transform: uppercase !important;
+    color: #64748b !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
 }
 
 .game-card.enhanced .lean-badge strong {
+    display: block !important;
     font-size: 14px !important;
+    color: #0f172a !important;
     line-height: 1.15 !important;
 }
 
 .game-card.enhanced .lean-badge em {
+    display: inline-block !important;
+    margin-top: 3px !important;
+    font-style: normal !important;
+    font-weight: 950 !important;
+    color: var(--lean-color) !important;
     font-size: 18px !important;
     line-height: 1.1 !important;
-    margin-top: 3px !important;
 }
 
 .game-card.enhanced .lean-score-line {
-    font-size: 11px !important;
     margin-top: 5px !important;
+    font-size: 11px !important;
+    color: #64748b !important;
     min-height: 0 !important;
 }
 
-/* Make rows visually even without stretching the whole card */
-.game-card.enhanced .game-card-top {
-    height: 28px !important;
+/* Scoreboard strip uses the old mini-dot treatment */
+.score-card .mini-lean {
+    display: grid !important;
+    grid-template-columns: 34px 1fr !important;
     align-items: center !important;
+    gap: 8px !important;
+    margin-top: 8px !important;
+    padding-top: 8px !important;
+    border-top: 1px solid #e5e7eb !important;
+}
+
+.score-card .mini-lean-dot-wrap {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.score-card .mini-lean-dot {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, var(--lean-color), #ffffff 82%) !important;
+    background-image: linear-gradient(135deg, var(--lean-color), #ffffff 82%) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    border: 2px solid var(--lean-color) !important;
+    box-shadow: 0 4px 10px rgba(15,23,42,.12) !important;
+}
+
+.score-card .mini-lean-dot::before,
+.score-card .mini-lean-dot::after {
+    display: none !important;
+    content: none !important;
+}
+
+.score-card .mini-lean-dot img {
+    width: 20px !important;
+    height: 20px !important;
+    object-fit: contain !important;
+    background: transparent !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+    opacity: 1 !important;
+}
+
+.score-card .mini-lean strong {
+    font-size: 12px !important;
+    line-height: 1.1 !important;
 }
 
 @media (max-width: 700px) {

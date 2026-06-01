@@ -1,0 +1,30 @@
+
+/* ===== Lean logo visibility fix ===== */
+/* Keeps the large colored baseball/circle but removes the tiny inner baseball/stitch layer. */
+
+.game-card.enhanced .lean-ball,
+.score-card .mini-lean-dot {
+    background:
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,.92) 0 16%, rgba(255,255,255,.62) 17%, transparent 45%),
+        linear-gradient(135deg, color-mix(in srgb, var(--lean-color) 72%, white), var(--lean-color)) !important;
+    background-image:
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,.92) 0 16%, rgba(255,255,255,.62) 17%, transparent 45%),
+        linear-gradient(135deg, color-mix(in srgb, var(--lean-color) 72%, white), var(--lean-color)) !important;
+}
+
+.game-card.enhanced .lean-ball::before,
+.game-card.enhanced .lean-ball::after,
+.score-card .mini-lean-dot::before,
+.score-card .mini-lean-dot::after {
+    display: none !important;
+    content: none !important;
+    border: 0 !important;
+}
+
+.game-card.enhanced .lean-ball img,
+.score-card .mini-lean-dot img {
+    background: transparent !important;
+    filter: drop-shadow(0 2px 3px rgba(255,255,255,.35)) drop-shadow(0 2px 4px rgba(0,0,0,.30)) !important;
+    mix-blend-mode: normal !important;
+    opacity: 1 !important;
+}

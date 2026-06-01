@@ -3,11 +3,6 @@ import requests
 
 
 def _weather_score_for_pitcher(weather: dict, pitcher_profile: dict) -> float:
-    """Score weather from a pitcher's perspective.
-
-    Hot weather, wind out, and low pressure generally increase carry/contact risk.
-    This is intentionally simple but real-data-ready.
-    """
     if not weather.get("available"):
         return 50.0
 
@@ -38,7 +33,6 @@ def _weather_score_for_pitcher(weather: dict, pitcher_profile: dict) -> float:
     elif pressure > 1020:
         score += 2
 
-    # Penalize fly-ball / HR-prone profiles more heavily in bad carry environments.
     hr9 = pitcher_profile.get("raw", {}).get("traditional", {}).get("HR/9", 1.0)
     if hr9 >= 1.4 and score < 50:
         score -= 3
@@ -46,7 +40,48 @@ def _weather_score_for_pitcher(weather: dict, pitcher_profile: dict) -> float:
     return round(max(20, min(80, score)), 1)
 
 
-def get_weather_context(venue_context: dict, pitcher_profile: dict | None = None) -> dict:
+def _closest_hour_index(times: list[str], game_datetime: str | None) -> int:
+    if not times:
+        return 0
+
+    if not game_datetime:
+        return 0
+
+    try:
+        # MLB dates are usually UTC ISO strings ending in Z.
+        target = datetime.fromisoformat(game_datetime.replace("Z", "+00:00"))
+    except ValueError:
+        return 0
+
+    best_idx = 0
+    best_delta = None
+
+    for idx, item in enumerate(times):
+        try:
+            # Open-Meteo returns local naive time strings. Treat them as naive for nearest-hour selection.
+            point = datetime.fromisoformat(item)
+            target_compare = target.replace(tzinfo=None)
+            delta = abs((point - target_compare).total_seconds())
+        except ValueError:
+            continue
+
+        if best_delta is None or delta < best_delta:
+            best_delta = delta
+            best_idx = idx
+
+    return best_idx
+
+
+def get_weather_context(venue_context: dict, pitcher_profile: dict | None = None, game_datetime: str | None = None) -> dict:
+    roof = venue_context.get("roof")
+    if roof == "dome":
+        return {
+            "available": True,
+            "weather_score": 50.0,
+            "summary": "Indoor dome. Weather impact treated as neutral.",
+            "roof": roof,
+        }
+
     lat = venue_context.get("lat")
     lon = venue_context.get("lon")
 
@@ -55,6 +90,7 @@ def get_weather_context(venue_context: dict, pitcher_profile: dict | None = None
             "available": False,
             "weather_score": 50.0,
             "summary": "Weather unavailable for unmapped venue.",
+            "roof": roof or "unknown",
         }
 
     params = {
@@ -76,6 +112,7 @@ def get_weather_context(venue_context: dict, pitcher_profile: dict | None = None
             "available": False,
             "weather_score": 50.0,
             "summary": "Weather API unavailable.",
+            "roof": roof or "unknown",
         }
 
     hourly = data.get("hourly", {})
@@ -86,26 +123,39 @@ def get_weather_context(venue_context: dict, pitcher_profile: dict | None = None
             "available": False,
             "weather_score": 50.0,
             "summary": "Weather forecast missing hourly data.",
+            "roof": roof or "unknown",
         }
 
-    # MVP: use the current/first available hourly point.
-    idx = 0
+    idx = _closest_hour_index(times, game_datetime)
+
+    def pick(key, default=None):
+        values = hourly.get(key, [])
+        if idx < len(values):
+            return values[idx]
+        return default
 
     weather = {
         "available": True,
-        "temperature_f": hourly.get("temperature_2m", [None])[idx],
-        "humidity": hourly.get("relative_humidity_2m", [None])[idx],
-        "wind_speed_mph": hourly.get("wind_speed_10m", [None])[idx],
-        "pressure_hpa": hourly.get("surface_pressure", [None])[idx],
-        "precipitation_probability": hourly.get("precipitation_probability", [None])[idx],
+        "temperature_f": pick("temperature_2m"),
+        "humidity": pick("relative_humidity_2m"),
+        "wind_speed_mph": pick("wind_speed_10m"),
+        "pressure_hpa": pick("surface_pressure"),
+        "precipitation_probability": pick("precipitation_probability"),
+        "roof": roof or "open",
     }
 
     weather["weather_score"] = _weather_score_for_pitcher(weather, pitcher_profile or {})
+
+    roof_note = ""
+    if roof == "retractable":
+        roof_note = " Retractable roof; actual roof status is not modeled yet."
+
     weather["summary"] = (
         f"{weather.get('temperature_f')}°F, "
         f"{weather.get('humidity')}% humidity, "
         f"{weather.get('wind_speed_mph')} mph wind, "
-        f"{weather.get('pressure_hpa')} hPa pressure"
+        f"{weather.get('pressure_hpa')} hPa pressure."
+        f"{roof_note}"
     )
 
     return weather
