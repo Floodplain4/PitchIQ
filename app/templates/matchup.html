@@ -96,6 +96,90 @@
         font-size: 13px;
     }
 
+    .{
+        position: relative;
+        cursor: help;
+    }
+
+    .tooltip-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .tooltip-label::after {
+        content: "?";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 15px;
+        height: 15px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1e3a8a;
+        font-size: 10px;
+        font-weight: 900;
+        line-height: 1;
+        text-transform: none;
+    }
+
+    .tooltip-bubble {
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 12px);
+        transform: translate(-50%, 6px);
+        width: min(360px, 78vw);
+        background: #111827;
+        color: #ffffff;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 12px 14px;
+        box-shadow: 0 18px 38px rgba(15, 23, 42, .38);
+        font-size: 13px;
+        line-height: 1.45;
+        font-weight: 600;
+        z-index: 5000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .14s ease, transform .14s ease;
+        white-space: normal;
+        text-transform: none;
+        letter-spacing: normal;
+    }
+
+    .tooltip-bubble::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        transform: translateX(-50%);
+        border: 8px solid transparent;
+        border-top-color: #111827;
+    }
+
+    .tooltip-card:hover .tooltip-bubble,
+    .tooltip-card:focus-within .tooltip-bubble {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+
+    .metric-grid,
+    .mini-stat-row,
+    .savant-section,
+    .pitcher-card,
+    .context-card {
+        overflow: visible;
+    }
+
+    .pitcher-card {
+        position: relative;
+        z-index: 1;
+    }
+
+    .tooltip-card:hover {
+        z-index: 100;
+    }
+
     @media (max-width: 900px) {
         .model-row {
             grid-template-columns: 1fr;
@@ -104,8 +188,27 @@
         .edge-meter span {
             margin-left: 50%;
         }
+
+        .tooltip-bubble {
+            left: 0;
+            transform: translateY(6px);
+            width: min(300px, 82vw);
+        }
+
+        .tooltip-card:hover .tooltip-bubble,
+        .tooltip-card:focus-within .tooltip-bubble {
+            transform: translateY(0);
+        }
+
+        .tooltip-bubble::after {
+            left: 20px;
+        }
     }
 </style>
+
+{% macro tip(label) -%}
+<a class="formula-link" href="/about-model#{{ label|lower|replace(' ', '-')|replace('/', '-')|replace('%', 'pct') }}" title="View formula explanation">?</a>
+{%- endmacro %}
 
 <section class="card matchup-page">
     {% if game.error %}
@@ -135,7 +238,7 @@
     </div>
 
     <div class="advantage-ribbon">
-        <span>Pitcher Advantage</span>
+        <span>Pitcher Advantage {{ tip('Pitcher Advantage') }}</span>
         <strong>{{ prediction.pitcher_advantage }} +{{ prediction.edge_amount }}</strong>
         <em>Confidence: {{ prediction.confidence }}</em>
     </div>
@@ -164,12 +267,35 @@
             </div>
 
             <div class="metric-grid main-metrics">
-                <div class="heat heat-neutral" data-percentile=""><span>PitchIQ</span><strong>{{ score }}</strong></div>
-                <div class="heat heat-neutral" data-percentile=""><span>Win Probability</span><strong>{{ win_prob }}%</strong></div>
-                <div class="heat heat-neutral" data-percentile=""><span>Expected IP</span><strong>{{ expected_ip }}</strong></div>
-                <div class="heat heat-neutral" data-percentile=""><span>K Projection</span><strong>{{ k_proj }}</strong></div>
-                <div class="heat heat-neutral" data-percentile=""><span>Quality Start</span><strong>{{ qs_prob }}%</strong></div>
-                <div><span>Model Role</span><strong>{{ "Away SP" if side == "away" else "Home SP" }}</strong></div>
+                <div class="heat heat-neutral" data-percentile="">
+                    <span>PitchIQ {{ tip('PitchIQ') }}</span>
+                    <strong>{{ score }}</strong>
+                </div>
+
+                <div class="heat heat-neutral" data-percentile="">
+                    <span>Win Probability {{ tip('Win Probability') }}</span>
+                    <strong>{{ win_prob }}%</strong>
+                </div>
+
+                <div class="heat heat-neutral" data-percentile="">
+                    <span>Expected IP {{ tip('Expected IP') }}</span>
+                    <strong>{{ expected_ip }}</strong>
+                </div>
+
+                <div class="heat heat-neutral" data-percentile="">
+                    <span>K Projection {{ tip('K Projection') }}</span>
+                    <strong>{{ k_proj }}</strong>
+                </div>
+
+                <div class="heat heat-neutral" data-percentile="">
+                    <span>Quality Start {{ tip('Quality Start') }}</span>
+                    <strong>{{ qs_prob }}%</strong>
+                </div>
+
+                <div class="">
+                    <span>Model Role {{ tip('Model Role') }}</span>
+                    <strong>{{ "Away SP" if side == "away" else "Home SP" }}</strong>
+                </div>
             </div>
 
             <div class="savant-section">
@@ -177,7 +303,7 @@
                 <div class="mini-stat-row">
                     {% for stat in profile.traditional %}
                     <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
-                        <span>{{ stat.label }}</span>
+                        <span>{{ stat.label }} {{ tip(stat.label) }}</span>
                         <strong>{{ stat.value }}</strong>
                     </div>
                     {% endfor %}
@@ -189,7 +315,7 @@
                 <div class="mini-stat-row">
                     {% for stat in profile.recent_form %}
                     <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
-                        <span>{{ stat.label }}</span>
+                        <span>{{ stat.label }} {{ tip(stat.label) }}</span>
                         <strong>{{ stat.value }}</strong>
                     </div>
                     {% endfor %}
@@ -201,7 +327,7 @@
                 <div class="mini-stat-row">
                     {% for stat in profile.statcast %}
                     <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
-                        <span>{{ stat.label }}</span>
+                        <span>{{ stat.label }} {{ tip(stat.label) }}</span>
                         <strong>{{ stat.value }}</strong>
                     </div>
                     {% endfor %}
@@ -213,7 +339,7 @@
                 <div class="mini-stat-row">
                     {% for stat in profile.batted_ball %}
                     <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
-                        <span>{{ stat.label }}</span>
+                        <span>{{ stat.label }} {{ tip(stat.label) }}</span>
                         <strong>{{ stat.value }}</strong>
                     </div>
                     {% endfor %}
@@ -225,7 +351,7 @@
                 <div class="mini-stat-row">
                     {% for stat in profile.plate_discipline %}
                     <div class="{{ stat.heat_class }}" data-percentile="{{ stat.percentile }}">
-                        <span>{{ stat.label }}</span>
+                        <span>{{ stat.label }} {{ tip(stat.label) }}</span>
                         <strong>{{ stat.value }}</strong>
                     </div>
                     {% endfor %}
@@ -254,20 +380,20 @@
         <h3>Environment & Matchup Context</h3>
         <div class="context-grid">
             <div class="context-card">
-                <span>Ballpark Context</span>
+                <span>Ballpark Context {{ tip('Park Context') }}</span>
                 <strong>{{ prediction.venue_context.park_score }}</strong>
                 <p>{{ prediction.venue_context.notes }}</p>
                 <p>Run Factor: {{ prediction.venue_context.run_factor }} | HR Factor: {{ prediction.venue_context.hr_factor }}</p>
             </div>
 
             <div class="context-card">
-                <span>Weather</span>
+                <span>Weather {{ tip('Weather Impact') }}</span>
                 <strong>{{ prediction.away_weather.weather_score }}</strong>
                 <p>{{ prediction.away_weather.summary }}</p>
             </div>
 
             <div class="context-card">
-                <span>Lineup Matchup</span>
+                <span>Lineup Matchup {{ tip('Lineup Matchup') }}</span>
                 <strong>{{ prediction.away_lineup.lineup_score }} / {{ prediction.home_lineup.lineup_score }}</strong>
                 <p>{{ prediction.away_lineup.summary }}</p>
             </div>
@@ -285,8 +411,9 @@
             {% for item in prediction.score_breakdown %}
             <div class="model-row">
                 <div>
-                    <strong>{{ item.label }}</strong>
+                    <strong >{{ item.label }}</strong>
                     <span>{{ item.weight }} weight</span>
+                    {{ tip(item.label) }}
                 </div>
 
                 <div class="model-score">{{ game.away.abbr }}</div>

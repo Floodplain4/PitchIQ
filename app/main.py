@@ -13,7 +13,16 @@ templates = Jinja2Templates(directory="app/templates")
 @app.get("/")
 def home(request: Request):
     games = get_todays_games()
-    return templates.TemplateResponse(request, "index.html", {"games": games})
+
+    enriched_games = []
+    for game in games:
+        try:
+            game["prediction"] = build_matchup_prediction(game)
+        except Exception:
+            game["prediction"] = None
+        enriched_games.append(game)
+
+    return templates.TemplateResponse(request, "index.html", {"games": enriched_games})
 
 
 @app.get("/matchup/{game_id}")

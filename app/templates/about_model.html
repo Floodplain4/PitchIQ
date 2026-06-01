@@ -2,39 +2,282 @@
 {% block content %}
 
 <section class="card">
-    <h2>About the Model</h2>
+    <h2>About the PitchIQ Model</h2>
 
     <p>
-        PitchIQ is designed as a transparent sports analytics system. The goal is not to produce a black-box prediction,
-        but to show which factors contribute to a matchup projection.
+        PitchIQ is designed as a transparent baseball analytics project. It compares probable starting pitchers using
+        season performance, recent form, Statcast-style quality indicators, command and whiff skill, lineup context,
+        ballpark factors, and weather.
     </p>
-
-    <h3>Planned Factors</h3>
-
-    <ul>
-        <li>Recent pitcher form across the last several starts</li>
-        <li>Season-level pitching performance</li>
-        <li>Pitcher history in the current stadium</li>
-        <li>Batter-vs-pitcher history against the projected lineup</li>
-        <li>Opponent lineup performance against pitcher handedness</li>
-        <li>Weather impact: temperature, humidity, wind, pressure, and precipitation</li>
-        <li>Expected innings and quality start probability</li>
-    </ul>
-
-    <h3>Planned Outputs</h3>
-
-    <ul>
-        <li>Pitcher advantage</li>
-        <li>Team win probability</li>
-        <li>Expected innings</li>
-        <li>Strikeout projection</li>
-        <li>Quality start probability</li>
-        <li>Model confidence</li>
-    </ul>
 
     <p class="muted">
-        PitchIQ is a sports analytics portfolio project. It is not gambling advice.
+        PitchIQ is a portfolio analytics project, not gambling advice. The model is pitcher-focused and does not fully
+        account for bullpen, defense, injuries, betting markets, or complete offensive projections.
     </p>
+</section>
+
+<section class="card">
+    <h2>Formula & Stat Glossary</h2>
+
+    <div class="context-grid">
+        <div class="context-card" id="pitcher-advantage">
+            <span>Pitcher Advantage</span>
+            <strong>Which starter has the edge?</strong>
+            <p>The pitcher/team with the stronger PitchIQ matchup score. It is based on the score gap between the two probable starters.</p>
+        </div>
+
+        <div class="context-card" id="pitchiq">
+            <span>PitchIQ</span>
+            <strong>Overall pitcher matchup score</strong>
+            <p>A 20-80 style score blending season performance, recent form, Statcast quality, command/whiff skill, lineup matchup, weather, and park context. Higher is better for the pitcher.</p>
+        </div>
+
+        <div class="context-card" id="win-probability">
+            <span>Win Probability</span>
+            <strong>Pitcher-focused probability</strong>
+            <p>Calculated from the PitchIQ score gap. This is conservative and pitcher-focused, not a full sportsbook-style win model.</p>
+        </div>
+
+        <div class="context-card" id="expected-ip">
+            <span>Expected IP</span>
+            <strong>Projected starter workload</strong>
+            <p>Starts with recent average innings, then adjusts modestly for pitch count, command, recent form, weather, and park context.</p>
+        </div>
+
+        <div class="context-card" id="k-projection">
+            <span>K Projection</span>
+            <strong>Projected strikeouts</strong>
+            <p>Estimated batters faced multiplied by adjusted strikeout rate. Recent strikeout form is only a small nudge so one hot stretch does not dominate the projection.</p>
+        </div>
+
+        <div class="context-card" id="quality-start">
+            <span>Quality Start</span>
+            <strong>Chance of 6+ IP and ≤3 ER</strong>
+            <p>Estimated from expected innings, season run prevention, recent form, Statcast quality, command, weather, and park context.</p>
+        </div>
+
+        <div class="context-card" id="model-role">
+            <span>Model Role</span>
+            <strong>Away SP / Home SP</strong>
+            <p>Shows whether the pitcher is being evaluated as the away starting pitcher or home starting pitcher.</p>
+        </div>
+
+        <div class="context-card" id="season-performance">
+            <span>Season Performance</span>
+            <strong>Season-level quality</strong>
+            <p>Component score using ERA, WHIP, FIP, and strikeout skill.</p>
+        </div>
+
+        <div class="context-card" id="recent-form">
+            <span>Recent Form</span>
+            <strong>Recent-start trend</strong>
+            <p>Component score using recent ERA, WHIP, strikeouts, average innings, pitch count, and velocity trend.</p>
+        </div>
+
+        <div class="context-card" id="statcast-quality">
+            <span>Statcast Quality</span>
+            <strong>Contact quality allowed</strong>
+            <p>Component score using xwOBA, xBA, xSLG, hard-hit rate, barrel rate, and average exit velocity.</p>
+        </div>
+
+        <div class="context-card" id="command---whiff">
+            <span>Command / Whiff</span>
+            <strong>Dominance and control</strong>
+            <p>Component score using K%, BB%, chase rate, and whiff rate.</p>
+        </div>
+
+        <div class="context-card" id="lineup-matchup">
+            <span>Lineup Matchup</span>
+            <strong>Opponent lineup context</strong>
+            <p>Pitcher-facing score for the opposing lineup. When official lineups are not available, the app uses a neutral/deterministic placeholder.</p>
+        </div>
+
+        <div class="context-card" id="weather-impact">
+            <span>Weather Impact</span>
+            <strong>Pitcher-facing weather score</strong>
+            <p>Considers temperature, humidity, wind, pressure, and HR-prone profiles. Pitcher-friendly conditions score higher.</p>
+        </div>
+
+        <div class="context-card" id="park-context">
+            <span>Park Context</span>
+            <strong>Ballpark run environment</strong>
+            <p>Pitcher-facing score based on run factor and home-run factor. Pitcher-friendly parks score higher.</p>
+        </div>
+
+        <div class="context-card" id="era">
+            <span>ERA</span>
+            <strong>Earned Run Average</strong>
+            <p>Earned runs allowed per nine innings. Lower is better for pitchers.</p>
+        </div>
+
+        <div class="context-card" id="whip">
+            <span>WHIP</span>
+            <strong>Walks + hits per inning</strong>
+            <p>Measures baserunners allowed. Lower is better.</p>
+        </div>
+
+        <div class="context-card" id="fip">
+            <span>FIP</span>
+            <strong>Fielding Independent Pitching</strong>
+            <p>Estimates pitcher run prevention from strikeouts, walks/HBP, and home runs while reducing defensive noise.</p>
+        </div>
+
+        <div class="context-card" id="k-9">
+            <span>K/9</span>
+            <strong>Strikeouts per nine innings</strong>
+            <p>Useful strikeout skill stat, but less direct than K% for projecting Ks because it depends on innings.</p>
+        </div>
+
+        <div class="context-card" id="bb-9">
+            <span>BB/9</span>
+            <strong>Walks per nine innings</strong>
+            <p>Lower is better.</p>
+        </div>
+
+        <div class="context-card" id="hr-9">
+            <span>HR/9</span>
+            <strong>Home runs per nine innings</strong>
+            <p>Lower is better, especially in hitter-friendly parks.</p>
+        </div>
+
+        <div class="context-card" id="last-3-era">
+            <span>Last 3 ERA</span>
+            <strong>Recent ERA</strong>
+            <p>ERA over the recent-start sample.</p>
+        </div>
+
+        <div class="context-card" id="last-3-whip">
+            <span>Last 3 WHIP</span>
+            <strong>Recent WHIP</strong>
+            <p>WHIP over the recent-start sample.</p>
+        </div>
+
+        <div class="context-card" id="last-3-k">
+            <span>Last 3 K</span>
+            <strong>Recent strikeouts</strong>
+            <p>Total strikeouts over the recent-start sample. Used lightly in the model.</p>
+        </div>
+
+        <div class="context-card" id="avg-ip">
+            <span>Avg IP</span>
+            <strong>Average innings</strong>
+            <p>Average innings per start in the recent-start sample.</p>
+        </div>
+
+        <div class="context-card" id="avg-pitch-count">
+            <span>Avg Pitch Count</span>
+            <strong>Recent workload</strong>
+            <p>Average recent pitch count. Higher pitch counts can support more expected innings.</p>
+        </div>
+
+        <div class="context-card" id="velocity-trend">
+            <span>Velocity Trend</span>
+            <strong>Recent velocity movement</strong>
+            <p>Estimated recent velocity movement compared with baseline. Positive is generally better.</p>
+        </div>
+
+        <div class="context-card" id="xwoba">
+            <span>xwOBA</span>
+            <strong>Expected weighted on-base allowed</strong>
+            <p>Expected weighted on-base average allowed based on contact quality and plate appearance outcomes. Lower is better.</p>
+        </div>
+
+        <div class="context-card" id="xba">
+            <span>xBA</span>
+            <strong>Expected batting average allowed</strong>
+            <p>Lower is better for pitchers.</p>
+        </div>
+
+        <div class="context-card" id="xslg">
+            <span>xSLG</span>
+            <strong>Expected slugging allowed</strong>
+            <p>Lower is better for pitchers.</p>
+        </div>
+
+        <div class="context-card" id="hardhitpct">
+            <span>HardHit%</span>
+            <strong>Hard-hit rate</strong>
+            <p>Percentage of batted balls hit 95+ mph. Lower is better.</p>
+        </div>
+
+        <div class="context-card" id="barrelpct">
+            <span>Barrel%</span>
+            <strong>Barrel rate</strong>
+            <p>Percentage of batted balls with ideal exit velocity and launch angle. Lower is better.</p>
+        </div>
+
+        <div class="context-card" id="avg-ev">
+            <span>Avg EV</span>
+            <strong>Average exit velocity allowed</strong>
+            <p>Lower is better for pitchers.</p>
+        </div>
+
+        <div class="context-card" id="gbpct">
+            <span>GB%</span>
+            <strong>Ground-ball percentage</strong>
+            <p>More ground balls can reduce extra-base damage.</p>
+        </div>
+
+        <div class="context-card" id="fbpct">
+            <span>FB%</span>
+            <strong>Fly-ball percentage</strong>
+            <p>Context dependent. High fly-ball rates can be risky in homer-friendly parks.</p>
+        </div>
+
+        <div class="context-card" id="ldpct">
+            <span>LD%</span>
+            <strong>Line-drive percentage</strong>
+            <p>Lower is usually better for pitchers.</p>
+        </div>
+
+        <div class="context-card" id="pullpct">
+            <span>Pull%</span>
+            <strong>Pulled-contact percentage</strong>
+            <p>High pull contact can indicate damage risk depending on hitter and park.</p>
+        </div>
+
+        <div class="context-card" id="oppopct">
+            <span>Oppo%</span>
+            <strong>Opposite-field contact percentage</strong>
+            <p>Share of contact hit to the opposite field.</p>
+        </div>
+
+        <div class="context-card" id="zonepct">
+            <span>Zone%</span>
+            <strong>Zone rate</strong>
+            <p>Percentage of pitches thrown in the strike zone.</p>
+        </div>
+
+        <div class="context-card" id="chasepct">
+            <span>Chase%</span>
+            <strong>Out-of-zone chase rate</strong>
+            <p>Percentage of out-of-zone pitches that batters swing at. Higher is better for pitchers.</p>
+        </div>
+
+        <div class="context-card" id="whiffpct">
+            <span>Whiff%</span>
+            <strong>Swing-and-miss rate</strong>
+            <p>Higher usually supports stronger strikeout projection.</p>
+        </div>
+
+        <div class="context-card" id="1stpitchspct">
+            <span>1stPitchS%</span>
+            <strong>First-pitch strike rate</strong>
+            <p>Getting ahead early generally improves pitcher outcomes.</p>
+        </div>
+
+        <div class="context-card" id="bbpct">
+            <span>BB%</span>
+            <strong>Walk rate</strong>
+            <p>Walks per plate appearance. Lower is better.</p>
+        </div>
+
+        <div class="context-card" id="kpct">
+            <span>K%</span>
+            <strong>Strikeout rate</strong>
+            <p>Strikeouts per plate appearance. One of the best anchors for strikeout projections because it is tied to batters faced.</p>
+        </div>
+    </div>
 </section>
 
 {% endblock %}
