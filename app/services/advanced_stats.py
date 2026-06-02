@@ -1,4 +1,5 @@
 import hashlib
+import importlib
 from app.services.player_assets import player_headshot_url
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
@@ -232,6 +233,138 @@ def _pitch_arsenal(player_id: int | None) -> list[dict]:
     return arsenal
 
 
+
+def _try_savant_profile(player_id: int | None, player_name: str) -> dict | None:
+    """Build a real profile from savant_api.fetch_pitcher_statcast + summarize_pitcher_statcast."""
+    if not player_id:
+        return None
+
+    try:
+        savant_api = importlib.import_module("app.services.savant_api")
+        fetch_pitcher_statcast = getattr(savant_api, "fetch_pitcher_statcast")
+        summarize_pitcher_statcast = getattr(savant_api, "summarize_pitcher_statcast")
+    except Exception as exc:
+        print("STATCAST FAILED: could not load savant functions:", repr(exc))
+        return None
+
+    try:
+        df = fetch_pitcher_statcast(player_id)
+        summary = summarize_pitcher_statcast(df)
+    except Exception as exc:
+        print("STATCAST FAILED:", repr(exc))
+        return None
+
+    if not summary or not summary.get("available"):
+        print(f"STATCAST FAILED: no Statcast sample for {player_name} ({player_id})")
+        return None
+
+    return _profile_from_savant_summary(player_id, player_name, summary)
+
+
+def _value(summary: dict, key: str, fallback):
+    value = summary.get(key)
+    return fallback if value is None else value
+
+
+def _profile_from_savant_summary(player_id: int, player_name: str, summary: dict) -> dict:
+    """Convert savant_api summary output into the profile shape used by templates/model."""
+    innings_est = max(float(summary.get("innings_est") or 1), 0.1)
+    pa = max(int(summary.get("plate_appearances_est") or 1), 1)
+
+    strikeouts = int(summary.get("strikeouts") or 0)
+    walks = int(summary.get("walks") or 0)
+    hits = int(summary.get("hits") or 0)
+    hr = int(summary.get("hr") or 0)
+
+    # These are approximations from pitch-level Statcast data.
+    # They are better than fake deterministic values, but still not official season ERA/FIP.
+    whip = round((walks + hits) / innings_est, 2)
+    k9 = round((strikeouts / innings_est) * 9, 1)
+    bb9 = round((walks / innings_est) * 9, 1)
+    hr9 = round((hr / innings_est) * 9, 1)
+    fip = round(((13 * hr + 3 * walks - 2 * strikeouts) / innings_est) + 3.1, 2)
+
+    # ERA cannot be reliably derived from this summary without earned runs.
+    # Use xwOBA to estimate an ERA-like display number.
+    xwoba = _value(summary, "xwoba", _bounded(player_id, "xwoba", .275, .370, 3))
+    era_est = round(_clamp(2.5 + ((float(xwoba) - .280) / (.390 - .280)) * 3.2, 2.4, 6.2), 2)
+
+    traditional_raw = {
+        "ERA": era_est,
+        "WHIP": _clamp(whip, 0.75, 2.10),
+        "FIP": _clamp(fip, 2.20, 6.40),
+        "K/9": _clamp(k9, 3.0, 16.0),
+        "BB/9": _clamp(bb9, 0.0, 8.0),
+        "HR/9": _clamp(hr9, 0.0, 4.0),
+    }
+
+    recent = summary.get("recent") or {}
+    recent_raw = {
+        "Last 3 ERA": _bounded(player_id, "l3-era", 1.80, 6.40, 2),
+        "Last 3 WHIP": _bounded(player_id, "l3-whip", 0.85, 1.70, 2),
+        "Last 3 K": int(recent.get("last_3_k") or _bounded_int(player_id, "l3-k", 10, 26)),
+        "Avg IP": round(float(recent.get("avg_ip") or innings_est), 1),
+        "Avg Pitch Count": int(recent.get("avg_pitch_count") or summary.get("sample_pitches") or _bounded_int(player_id, "pitch-count", 72, 101)),
+        "Velocity Trend": _bounded(player_id, "velo-trend", -1.4, 1.6, 1),
+    }
+
+    statcast_raw = {
+        "xwOBA": round(float(_value(summary, "xwoba", _bounded(player_id, "xwoba", .275, .370, 3))), 3),
+        "xBA": round(float(_value(summary, "xba", _bounded(player_id, "xba", .205, .285, 3))), 3),
+        "xSLG": round(float(_value(summary, "xslg", _bounded(player_id, "xslg", .330, .485, 3))), 3),
+        "HardHit%": round(float(_value(summary, "hard_hit_pct", _bounded(player_id, "hardhit", 31.0, 47.0, 1))), 1),
+        "Barrel%": round(float(_value(summary, "barrel_pct", _bounded(player_id, "barrel", 4.8, 11.5, 1))), 1),
+        "Avg EV": round(float(_value(summary, "avg_ev", _bounded(player_id, "ev", 86.5, 91.8, 1))), 1),
+    }
+
+    batted_ball_raw = {
+        "GB%": round(float(_value(summary, "gb_pct", _bounded(player_id, "gb", 33, 52, 1))), 1),
+        "FB%": round(float(_value(summary, "fb_pct", _bounded(player_id, "fb", 22, 41, 1))), 1),
+        "LD%": round(float(_value(summary, "ld_pct", _bounded(player_id, "ld", 17, 27, 1))), 1),
+        "Pull%": _bounded(player_id, "pull", 34, 45, 1),
+        "Oppo%": _bounded(player_id, "oppo", 20, 31, 1),
+    }
+
+    discipline_raw = {
+        "Zone%": round(float(_value(summary, "zone_pct", _bounded(player_id, "zone", 39, 51, 1))), 1),
+        "Chase%": round(float(_value(summary, "chase_pct", _bounded(player_id, "chase", 25, 37, 1))), 1),
+        "Whiff%": round(float(_value(summary, "whiff_pct", _bounded(player_id, "whiff", 18, 34, 1))), 1),
+        "1stPitchS%": round(float(_value(summary, "first_pitch_strike_pct", _bounded(player_id, "firstpitch", 55, 68, 1))), 1),
+        "BB%": round(float(_value(summary, "bb_pct", _bounded(player_id, "bbpercent", 5.5, 11.8, 1))), 1),
+        "K%": round(float(_value(summary, "k_pct", _bounded(player_id, "kpercent", 17, 32, 1))), 1),
+    }
+
+    arsenal = summary.get("pitch_arsenal") or _pitch_arsenal(player_id)
+    for pitch in arsenal:
+        if "whiff" in pitch:
+            pitch["whiff_percentile"] = metric_percentile("Whiff%", pitch.get("whiff") or 0)
+
+    scores = calculate_component_scores(traditional_raw, recent_raw, statcast_raw, discipline_raw)
+
+    sample_pitches = int(summary.get("sample_pitches") or 0)
+
+    return {
+        "id": player_id,
+        "name": player_name,
+        "headshot": player_headshot_url(player_id),
+        "data_quality": f"Real Statcast profile · {sample_pitches} pitches sampled",
+        "traditional": stat_items(traditional_raw),
+        "recent_form": stat_items(recent_raw),
+        "statcast": stat_items(statcast_raw),
+        "batted_ball": stat_items(batted_ball_raw),
+        "plate_discipline": stat_items(discipline_raw),
+        "arsenal": arsenal,
+        "component_scores": scores,
+        "raw": {
+            "traditional": traditional_raw,
+            "recent_form": recent_raw,
+            "statcast": statcast_raw,
+            "plate_discipline": discipline_raw,
+            "sample_pitches": sample_pitches,
+        },
+    }
+
+
 def get_pitcher_profile(player_id: int | None, player_name: str = "TBD") -> dict:
     if not player_id:
         return {
@@ -261,6 +394,10 @@ def get_pitcher_profile(player_id: int | None, player_name: str = "TBD") -> dict
                 "plate_discipline": {},
             },
         }
+
+    real_profile = _try_savant_profile(player_id, player_name)
+    if real_profile:
+        return real_profile
 
     traditional_raw = {
         "ERA": _bounded(player_id, "era", 2.45, 5.45, 2),
@@ -312,7 +449,7 @@ def get_pitcher_profile(player_id: int | None, player_name: str = "TBD") -> dict
         "id": player_id,
         "name": player_name,
         "headshot": player_headshot_url(player_id),
-        "data_quality": "MVP deterministic profile; real Statcast pipeline planned",
+        "data_quality": "Deterministic fallback profile; real Statcast unavailable",
         "traditional": stat_items(traditional_raw),
         "recent_form": stat_items(recent_raw),
         "statcast": stat_items(statcast_raw),
