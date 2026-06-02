@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+    <h2>Prediction Accuracy Tracker</h2>
+    <p class="muted">
+        Tracks PitchIQ pregame leans and grades them after MLB games become final.
+        This is intentionally simple: it measures whether the predicted pitching edge aligned with the actual game winner.
+    </p>
+
+    <form method="post" action="/accuracy/grade">
+        <button type="submit">Grade Final Games</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Summary</h2>
+    <div class="analytics-grid">
+        <div class="stat">
+            <strong>{{ stats.total_logged }}</strong>
+            <span>Total Logged</span>
+        </div>
+        <div class="stat">
+            <strong>{{ stats.graded_games }}</strong>
+            <span>Graded Games</span>
+        </div>
+        <div class="stat">
+            <strong>{{ stats.actionable_games }}</strong>
+            <span>Actionable Leans</span>
+        </div>
+        <div class="stat">
+            <strong>{{ stats.accuracy if stats.accuracy is not none else "N/A" }}{% if stats.accuracy is not none %}%{% endif %}</strong>
+            <span>Winner Accuracy</span>
+        </div>
+    </div>
+</section>
+
+<section class="card">
+    <h2>Recent Predictions</h2>
+    <div class="scroll-window">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Matchup</th>
+                    <th>Predicted</th>
+                    <th>Edge</th>
+                    <th>PitchIQ</th>
+                    <th>Final</th>
+                    <th>Correct</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in stats.recent_rows %}
+                <tr>
+                    <td>{{ row.game_date }}</td>
+                    <td>{{ row.away_team }} @ {{ row.home_team }}</td>
+                    <td>{{ row.predicted_team }}</td>
+                    <td>{{ row.edge_amount }}</td>
+                    <td>{{ row.away_pitchiq }} - {{ row.home_pitchiq }}</td>
+                    <td>
+                        {% if row.actual_away_runs %}
+                        {{ row.actual_away_runs }} - {{ row.actual_home_runs }}
+                        {% else %}
+                        Pending
+                        {% endif %}
+                    </td>
+                    <td>{{ row.correct_winner or "Pending" }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="muted">No predictions logged yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% endblock %}
