@@ -72,6 +72,9 @@ def _build_home_games() -> list[dict]:
     gc.collect()
     return enriched_games
 
+@app.head("/")
+def health_check():
+    return None
 
 @app.get("/")
 def home(request: Request):
