@@ -1,0 +1,18 @@
+name: Warm PitchIQ Cache
+
+on:
+  schedule:
+    - cron: "0 12,15,18,21 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  warm-cache:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger cache refresh
+        run: |
+          curl -X POST \
+          https://pitchiq.site/api/refresh-homepage-secret \
+          -H "Authorization: Bearer ${{ secrets.REFRESH_KEY }}"
