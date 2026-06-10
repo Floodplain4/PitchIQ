@@ -3,3 +3,4 @@ timestamp,game_id,game_date,away_team,home_team,away_score,home_score,predicted_
 2026-06-02T08:22:11,823541,2026-06-02T23:05:00Z,Cleveland Guardians,New York Yankees,,,home,New York Yankees,23.8,46.2,70,41.6,58.4,,,,,
 2026-06-10T12:28:24,823372,2026-06-10T22:40:00Z,Los Angeles Dodgers,Pittsburgh Pirates,,,away,Los Angeles Dodgers,17.8,65.2,47.4,55.4,44.6,,,,,
 2026-06-10T12:57:30,824590,2026-06-10T23:40:00Z,Atlanta Braves,Chicago White Sox,,,away,Atlanta Braves,17.5,68.1,50.6,55.4,44.6,,,,,
+2026-06-10T13:54:06,824348,2026-06-11T00:40:00Z,Chicago Cubs,Colorado Rockies,,,away,Chicago Cubs,17.3,52.6,35.3,55.2,44.8,,,,,

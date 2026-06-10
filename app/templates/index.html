@@ -16,20 +16,6 @@
         min-height: 86px;
         width: calc(100% - 28px);
     }
-    
-    .loading-spin {
-        display: inline-block;
-        animation: spin 1.5s linear infinite;
-    }
-
-    @keyframes spin {
-        from {
-            transform: rotate(0deg);
-        }
-        to {
-            transform: rotate(360deg);
-        }
-    }
 
     .lean-visual {
         display: flex;
@@ -184,7 +170,7 @@
 /* Original compact card rhythm from the version you liked */
 .game-grid {
     display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)) !important;
     gap: 14px !important;
     align-items: start !important;
 }
@@ -193,7 +179,7 @@
     display: block !important;
     height: auto !important;
     min-height: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
 }
 
 .game-card.enhanced .matchup-teams {
@@ -236,8 +222,8 @@
 
 /* Old lean panel layout */
 .game-card.enhanced .lean-badge {
-    min-height: 82px !important;
-    height: 82px !important;
+    min-height: 165px !important;
+    height: auto !important;
     margin: 0 !important;
     padding: 10px 14px !important;
     border-radius: 0 0 14px 14px !important;
@@ -425,6 +411,102 @@
     }
 }
 
+
+.preview-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.preview-cache-note {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.refresh-button {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 999px;
+    padding: 7px 11px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, .06);
+}
+
+.refresh-button:hover {
+    background: #f8fafc;
+}
+
+.preview-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+    gap: 6px;
+    margin-top: 7px;
+}
+
+.preview-metric {
+    background: rgba(255, 255, 255, .72);
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 6px 8px;
+}
+
+.preview-metric span {
+    display: block !important;
+    font-size: 9px !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
+}
+
+.preview-metric strong {
+    display: block !important;
+    font-size: 12px !important;
+    color: #0f172a !important;
+    line-height: 1.15 !important;
+}
+
+.loading-spin {
+    display: inline-block;
+    animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.cache-warming {
+    border: 1px solid #dbe3ef;
+    background: #f8fafc;
+    color: #64748b;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+
+@media (max-width: 520px) {
+    .game-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .game-card.enhanced .lean-badge {
+        min-height: 190px !important;
+        grid-template-columns: 52px 1fr !important;
+    }
+
+    .preview-metrics {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 </style>
 
 <section class="scoreboard-shell">
@@ -432,6 +514,26 @@
         <div>
             <h2>Today's Games</h2>
             <p class="muted">MLB pitching matchups, probable starters, and model previews.</p>
+            {% if cache_meta %}
+            <div class="preview-meta-row">
+                <span id="preview-cache-note" class="preview-cache-note">
+                    {% if cache_meta.ready_count %}
+                    {{ cache_meta.ready_count }} of {{ cache_meta.total_preview_count }} previews ready{% if cache_meta.updated_at %} · updated {{ cache_meta.updated_at[11:16] }}{% endif %}
+                    {% elif cache_meta.refreshing %}
+                    Building today's previews in the background
+                    {% else %}
+                    Preview cache warming
+                    {% endif %}
+                </span>
+                {% if cache_meta.refreshing %}
+                <span class="cache-warming">Warming model cache</span>
+                {% else %}
+                <form method="post" action="/refresh-homepage" style="margin:0;">
+                    <button type="submit" class="refresh-button">Refresh previews</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -549,24 +651,57 @@
                     <div class="lean-score-line">
                         {{ game.away.abbr }} {{ game.prediction.away_pitchiq_score }} · {{ game.home.abbr }} {{ game.prediction.home_pitchiq_score }}
                     </div>
+
+                    <div class="preview-metrics">
+                        <div class="preview-metric">
+                            <span>Projected IP</span>
+                            <strong>{{ game.away.abbr }} {{ game.prediction.expected_away_pitcher_innings or '—' }} · {{ game.home.abbr }} {{ game.prediction.expected_home_pitcher_innings or '—' }}</strong>
+                        </div>
+                        <div class="preview-metric">
+                            <span>Projected K</span>
+                            <strong>{{ game.away.abbr }} {{ game.prediction.away_strikeout_projection or '—' }} · {{ game.home.abbr }} {{ game.prediction.home_strikeout_projection or '—' }}</strong>
+                        </div>
+                        <div class="preview-metric">
+                            <span>Statcast Edge</span>
+                            <strong>{{ game.prediction.statcast_edge.abbr }}{% if game.prediction.statcast_edge.edge %} +{{ game.prediction.statcast_edge.edge }}{% endif %}</strong>
+                        </div>
+                        <div class="preview-metric">
+                            <span>Command Edge</span>
+                            <strong>{{ game.prediction.command_edge.abbr }}{% if game.prediction.command_edge.edge %} +{{ game.prediction.command_edge.edge }}{% endif %}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            {% if game.preview_state == 'detail_only' %}
+            <div class="lean-badge" style="--lean-color: #64748b;">
+                <div class="lean-visual">
+                    <div class="lean-ball even">
+                        <strong>→</strong>
+                    </div>
+                </div>
+                <div class="lean-content">
+                    <span>Full Analysis Available</span>
+                    <strong>Open matchup for complete model</strong>
+                    <div class="lean-score-line">
+                        Homepage previews limited to top {{ cache_meta.preview_limit }} games
+                    </div>
                 </div>
             </div>
             {% else %}
             <div class="lean-badge" style="--lean-color: #3b82f6;">
-    <div class="lean-visual">
-        <div class="lean-ball even">
-            <strong>⟳</strong>
-        </div>
-    </div>
-
-    <div class="lean-content">
-        <span>Generating Preview</span>
-        <strong>Calculating matchup model...</strong>
-        <div class="lean-score-line">
-            Refresh in a moment
-        </div>
-    </div>
-</div>
+                <div class="lean-visual">
+                    <div class="lean-ball even"><strong class="loading-spin">⟳</strong></div>
+                </div>
+                <div class="lean-content">
+                    <span>Generating Preview</span>
+                    <strong>Calculating matchup model...</strong>
+                    <div class="lean-score-line">
+                        Refresh in a moment
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             {% endif %}
         </a>
         {% endfor %}
@@ -577,5 +712,42 @@
     </div>
     {% endif %}
 </section>
+
+
+{% if cache_meta and cache_meta.ready_count < cache_meta.total_preview_count %}
+<script>
+(function () {
+    const initialReady = Number("{{ cache_meta.ready_count or 0 }}");
+    const total = Number("{{ cache_meta.total_preview_count or 0 }}");
+    let checks = 0;
+    const maxChecks = 30;
+
+    async function checkPreviewStatus() {
+        checks += 1;
+        if (checks > maxChecks) return;
+
+        try {
+            const response = await fetch("/api/homepage-status", { cache: "no-store" });
+            if (!response.ok) return;
+            const data = await response.json();
+            const ready = Number(data.ready_count || 0);
+            const note = document.getElementById("preview-cache-note");
+            if (note && total) {
+                note.textContent = ready + " of " + total + " previews ready" + (data.refreshing ? " · still warming" : "");
+            }
+
+            // Reload only when the background cache has actually made progress.
+            if (ready > initialReady) {
+                window.location.reload();
+            }
+        } catch (err) {
+            // Keep the page usable if status polling fails.
+        }
+    }
+
+    setInterval(checkPreviewStatus, 12000);
+})();
+</script>
+{% endif %}
 
 {% endblock %}
