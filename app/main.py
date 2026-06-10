@@ -287,30 +287,20 @@ def homepage_status():
     return JSONResponse(_cache_meta(games, cache_data))
 
 @app.post("/api/refresh-homepage-secret")
-def refresh_homepage_secret(
-    authorization: str | None = Header(default=None)
-):
+def refresh_homepage_secret(authorization: str | None = Header(default=None)):
     expected = os.environ.get("REFRESH_KEY", "")
 
+    if not expected:
+        raise HTTPException(status_code=500, detail="REFRESH_KEY not configured.")
+
     if authorization != f"Bearer {expected}":
-        raise HTTPException(
-            status_code=403,
-            detail="Invalid refresh key."
-        )
+        raise HTTPException(status_code=403, detail="Invalid refresh key.")
 
     games = get_todays_games()
-
     cache_data = _read_preview_cache()
+    _start_refresh_if_needed(games, cache_data, force=True)
 
-    _start_refresh_if_needed(
-        games,
-        cache_data,
-        force=True
-    )
-
-    return {
-        "status": "refresh started"
-    }
+    return {"status": "refresh started"}
 
 @app.post("/refresh-homepage")
 def refresh_homepage():
