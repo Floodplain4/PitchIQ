@@ -16,6 +16,20 @@
         min-height: 86px;
         width: calc(100% - 28px);
     }
+    
+    .loading-spin {
+        display: inline-block;
+        animation: spin 1.5s linear infinite;
+    }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
 
     .lean-visual {
         display: flex;
@@ -538,15 +552,21 @@
                 </div>
             </div>
             {% else %}
-            <div class="lean-badge" style="--lean-color: #64748b;">
-                <div class="lean-visual">
-                    <div class="lean-ball even"><strong>—</strong></div>
-                </div>
-                <div class="lean-content">
-                    <span>Preview unavailable</span>
-                    <strong>Pitching lean could not be calculated</strong>
-                </div>
-            </div>
+            <div class="lean-badge" style="--lean-color: #3b82f6;">
+    <div class="lean-visual">
+        <div class="lean-ball even">
+            <strong>⟳</strong>
+        </div>
+    </div>
+
+    <div class="lean-content">
+        <span>Generating Preview</span>
+        <strong>Calculating matchup model...</strong>
+        <div class="lean-score-line">
+            Refresh in a moment
+        </div>
+    </div>
+</div>
             {% endif %}
         </a>
         {% endfor %}

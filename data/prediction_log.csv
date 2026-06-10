@@ -1,3 +1,5 @@
 timestamp,game_id,game_date,away_team,home_team,away_score,home_score,predicted_side,predicted_team,edge_amount,away_pitchiq,home_pitchiq,away_win_probability,home_win_probability,actual_away_runs,actual_home_runs,actual_winner,correct_winner,graded_at
 2026-06-02T07:36:19,825079,2026-06-03T01:40:00Z,Los Angeles Dodgers,Arizona Diamondbacks,,,home,Arizona Diamondbacks,5.9,47.4,53.3,48.7,51.3,,,,,
 2026-06-02T08:22:11,823541,2026-06-02T23:05:00Z,Cleveland Guardians,New York Yankees,,,home,New York Yankees,23.8,46.2,70,41.6,58.4,,,,,
+2026-06-10T12:28:24,823372,2026-06-10T22:40:00Z,Los Angeles Dodgers,Pittsburgh Pirates,,,away,Los Angeles Dodgers,17.8,65.2,47.4,55.4,44.6,,,,,
+2026-06-10T12:57:30,824590,2026-06-10T23:40:00Z,Atlanta Braves,Chicago White Sox,,,away,Atlanta Braves,17.5,68.1,50.6,55.4,44.6,,,,,

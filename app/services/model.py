@@ -9,13 +9,15 @@ from app.services.lineup_context import get_lineup_matchup_context
 # Keep PitchIQ pitcher-focused, but do not let small Statcast samples or short workloads
 # create market-looking blowouts. Team context is added separately to win probability.
 WEIGHTS = {
+    # Keep the model pitcher-first. Statcast and command should drive the
+    # PitchIQ score more than placeholder lineup/BvP context.
     "Season Performance": 0.18,
-    "Recent Form": 0.12,
-    "Statcast Quality": 0.16,
-    "Command / Whiff": 0.16,
-    "Lineup Matchup": 0.18,
-    "Weather Impact": 0.05,
-    "Park Context": 0.05,
+    "Recent Form": 0.10,
+    "Statcast Quality": 0.28,
+    "Command / Whiff": 0.20,
+    "Lineup Matchup": 0.10,
+    "Weather Impact": 0.04,
+    "Park Context": 0.04,
 }
 
 LEAGUE_AVERAGE_K_RATE = 0.225
@@ -85,7 +87,7 @@ def _weighted_pitchiq_score(profile: dict, expected_ip: float | None = None, hom
     for label, weight in WEIGHTS.items():
         raw_total += scores.get(label, 50) * weight
 
-    # Weights sum to .90 by design. Normalize back to a 20-80 style center.
+    # Normalize to a 20-80 style center even if weights change later.
     weight_sum = sum(WEIGHTS.values()) or 1
     raw_score = raw_total / weight_sum
 
@@ -188,7 +190,7 @@ def _expected_batters_faced(profile: dict, expected_ip: float) -> float:
     batters_per_inning += (bb9 - 3.0) * 0.06
     batters_per_inning += (hr9 - 1.1) * 0.05
 
-    quality_score = (season_score * 0.40) + (statcast_score * 0.30) + (command_score * 0.30)
+    quality_score = (season_score * 0.25) + (statcast_score * 0.45) + (command_score * 0.30)
     batters_per_inning -= (quality_score - 50) / 260
 
     batters_per_inning = _clamp(batters_per_inning, 3.95, 4.65)
@@ -255,10 +257,10 @@ def _quality_start_probability(profile: dict, expected_ip: float) -> int:
 
     probability = 18
     probability += (expected_ip - 5.2) * 12
-    probability += (season - 50) * 0.10
-    probability += (recent - 50) * 0.09
-    probability += (statcast - 50) * 0.09
-    probability += (command - 50) * 0.05
+    probability += (season - 50) * 0.08
+    probability += (recent - 50) * 0.06
+    probability += (statcast - 50) * 0.14
+    probability += (command - 50) * 0.06
     probability += (weather - 50) * 0.05
     probability += (park - 50) * 0.05
 
@@ -281,9 +283,11 @@ def _run_prevention_projection(profile: dict) -> dict:
 
     reliability = _profile_reliability(profile)
 
-    projected_era = (era * 0.34) + (fip * 0.34) + (((xwoba - 0.320) * 12) + 4.10) * 0.18
-    projected_era += (hard_hit - 39) * 0.018
-    projected_era += (barrel - 8) * 0.035
+    # Make the run-prevention context more forward-looking. ERA/FIP still
+    # matter, but xwOBA and contact damage should move the projection more.
+    projected_era = (era * 0.24) + (fip * 0.26) + (((xwoba - 0.320) * 12) + 4.10) * 0.34
+    projected_era += (hard_hit - 39) * 0.024
+    projected_era += (barrel - 8) * 0.055
 
     # Regress projected run prevention for small samples.
     projected_era = (projected_era * reliability) + (4.10 * (1 - reliability))
