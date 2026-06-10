@@ -5,10 +5,12 @@ import gc
 import json
 import threading
 import traceback
+import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from fastapi import FastAPI, Request
+from fastapi import Header, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -31,7 +33,7 @@ templates = Jinja2Templates(directory="app/templates")
 CACHE_DIR = Path("data/cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 HOMEPAGE_PREVIEW_CACHE = CACHE_DIR / "homepage_predictions.json"
-HOMEPAGE_PREVIEW_LIMIT = 12
+HOMEPAGE_PREVIEW_LIMIT = 30
 HOMEPAGE_CACHE_TTL_SECONDS = 60 * 30
 HOMEPAGE_REFRESH_BATCH_SIZE = 4
 
@@ -284,6 +286,31 @@ def homepage_status():
     cache_data = _read_preview_cache()
     return JSONResponse(_cache_meta(games, cache_data))
 
+@app.post("/api/refresh-homepage-secret")
+def refresh_homepage_secret(
+    authorization: str | None = Header(default=None)
+):
+    expected = os.environ.get("REFRESH_KEY", "")
+
+    if authorization != f"Bearer {expected}":
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid refresh key."
+        )
+
+    games = get_todays_games()
+
+    cache_data = _read_preview_cache()
+
+    _start_refresh_if_needed(
+        games,
+        cache_data,
+        force=True
+    )
+
+    return {
+        "status": "refresh started"
+    }
 
 @app.post("/refresh-homepage")
 def refresh_homepage():
