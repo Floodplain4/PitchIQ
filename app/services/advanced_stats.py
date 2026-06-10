@@ -12,12 +12,12 @@ DISPLAY_RANGES = {}
 # to mostly 0/100. Higher display percentile = better for the pitcher.
 DISPLAY_BENCHMARKS = {
     # Statcast quality
-    "xwOBA": {"elite": 0.270, "great": 0.295, "avg": 0.320, "poor": 0.350, "bad": 0.385, "direction": "lower"},
-    "xBA": {"elite": 0.200, "great": 0.225, "avg": 0.250, "poor": 0.280, "bad": 0.320, "direction": "lower"},
-    "xSLG": {"elite": 0.330, "great": 0.375, "avg": 0.420, "poor": 0.480, "bad": 0.560, "direction": "lower"},
-    "HardHit%": {"elite": 28.0, "great": 34.0, "avg": 39.0, "poor": 44.0, "bad": 50.0, "direction": "lower"},
-    "Barrel%": {"elite": 3.0, "great": 5.0, "avg": 7.5, "poor": 10.0, "bad": 13.0, "direction": "lower"},
-    "Avg EV": {"elite": 86.0, "great": 88.0, "avg": 89.5, "poor": 91.5, "bad": 94.0, "direction": "lower"},
+    "xwOBA": {"elite": 0.260, "great": 0.285, "avg": 0.305, "poor": 0.325, "bad": 0.345, "direction": "lower"},
+    "xBA": {"elite": 0.205, "great": 0.225, "avg": 0.245, "poor": 0.265, "bad": 0.285, "direction": "lower"},
+    "xSLG": {"elite": 0.340, "great": 0.380, "avg": 0.420, "poor": 0.460, "bad": 0.500, "direction": "lower"},
+    "HardHit%": {"elite": 30.0, "great": 34.0, "avg": 38.0, "poor": 42.0, "bad": 46.0, "direction": "lower"},
+    "Barrel%": {"elite": 3.0, "great": 5.0, "avg": 7.0, "poor": 9.0, "bad": 12.0, "direction": "lower"},
+    "Avg EV": {"elite": 85.5, "great": 87.5, "avg": 89.0, "poor": 90.5, "bad": 92.0, "direction": "lower"},
 
     # Batted ball profile
     "GB%": {"elite": 54.0, "great": 49.0, "avg": 43.0, "poor": 36.0, "bad": 30.0, "direction": "higher"},
@@ -146,6 +146,12 @@ def _score_higher_better(value: float, bad: float, good: float) -> float:
 
 
 def metric_percentile(label: str, value) -> int:
+    # Pull% and Oppo% are descriptive batted-ball tendencies, not universally
+    # good or bad pitcher outcomes. Keep them visually neutral so the heat map
+    # does not imply false quality.
+    if label in ["Pull%", "Oppo%"]:
+        return 50
+
     benchmark = DISPLAY_BENCHMARKS.get(label)
 
     if benchmark:
@@ -175,19 +181,19 @@ def metric_percentile(label: str, value) -> int:
 def metric_heat_class(label: str, value) -> str:
     p = metric_percentile(label, value)
 
-    if p >= 95:
+    if p >= 97:
         return "heat heat-super-elite"
-    if p >= 85:
+    if p >= 90:
         return "heat heat-elite"
-    if p >= 70:
+    if p >= 75:
         return "heat heat-great"
-    if p >= 55:
+    if p >= 60:
         return "heat heat-good"
-    if p >= 45:
+    if p >= 40:
         return "heat heat-neutral"
-    if p >= 30:
+    if p >= 25:
         return "heat heat-cold"
-    if p >= 15:
+    if p >= 10:
         return "heat heat-poor"
     return "heat heat-super-poor"
 

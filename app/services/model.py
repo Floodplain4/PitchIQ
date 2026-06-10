@@ -4,20 +4,30 @@ from app.services.advanced_stats import get_pitcher_profile
 from app.services.venue_context import get_venue_context
 from app.services.weather_api import get_weather_context
 from app.services.lineup_context import get_lineup_matchup_context
+from app.services.team_context import (
+    get_bullpen_context,
+    get_team_offense_vs_pitcher_hand_context,
+    get_confirmed_lineup_strength_context,
+)
 
 
 # Keep PitchIQ pitcher-focused, but do not let small Statcast samples or short workloads
 # create market-looking blowouts. Team context is added separately to win probability.
 WEIGHTS = {
-    # Keep the model pitcher-first. Statcast/contact quality and command should
-    # drive the preview more than temporary BvP/lineup scaffolding.
-    "Season Performance": 0.16,
-    "Recent Form": 0.10,
-    "Statcast Quality": 0.24,
-    "Command / Whiff": 0.20,
-    "Lineup Matchup": 0.10,
-    "Weather Impact": 0.05,
-    "Park Context": 0.05,
+    # PitchIQ remains pitcher-first, but now includes the largest team-context
+    # inputs that strongly affect real-world game outcomes.
+    #
+    # Important: this is still not a sportsbook model. It does not ingest
+    # market odds, injuries, defense, umpire assignments, or sharp/public action.
+    "Statcast Quality": 0.26,
+    "Command / Whiff": 0.18,
+    "Season Performance": 0.12,
+    "Recent Form": 0.08,
+    "Bullpen Rating": 0.10,
+    "Offense vs Handedness": 0.10,
+    "Confirmed Lineup Strength": 0.08,
+    "Weather Impact": 0.04,
+    "Park Context": 0.04,
 }
 
 LEAGUE_AVERAGE_K_RATE = 0.225
@@ -350,7 +360,10 @@ def _stat_tooltips() -> dict:
         "Recent Form": "Recent-start score using recent ERA, WHIP, strikeouts, average innings, pitch count, and velocity trend.",
         "Statcast Quality": "Contact-quality score using expected stats and batted-ball damage allowed, such as xwOBA, xBA, xSLG, hard-hit rate, barrel rate, and average exit velocity.",
         "Command / Whiff": "Pitcher dominance and command score using K%, BB%, chase rate, and whiff rate.",
-        "Lineup Matchup": "Pitcher-facing score for the opposing lineup. When official lineups are unavailable, this currently falls back to a deterministic placeholder.",
+        "Lineup Matchup": "Legacy pitcher-vs-lineup scaffold. It is retained for detail pages but receives little or no model weight once confirmed lineup strength is available.",
+        "Bullpen Rating": "Team bullpen/support context. Uses available team pitching indicators as a conservative proxy until reliever-only splits are added.",
+        "Offense vs Handedness": "Team offensive support context against the opposing starter\'s throwing hand. Uses live/team hitting data when available and otherwise falls back to neutral.",
+        "Confirmed Lineup Strength": "Score for whether a confirmed batting order is available and how complete it is. Pregame unavailable lineups are treated as neutral, not guessed.",
         "Weather Impact": "Pitcher-facing weather score. Heat, humidity, wind, pressure, and HR-prone profiles can move this up or down.",
         "Park Context": "Pitcher-facing ballpark score based on run factor and home-run factor. Pitcher-friendly parks score higher.",
         "ERA": "Earned Run Average: earned runs allowed per nine innings. Lower is better for pitchers.",
@@ -385,6 +398,36 @@ def _stat_tooltips() -> dict:
     }
 
 
+
+def model_weight_table() -> list[dict]:
+    """Single source of truth for the About Model page.
+
+    Keeping this in code prevents the documentation from claiming a different
+    model than the backend actually runs.
+    """
+    purposes = {
+        "Statcast Quality": "Expected contact quality allowed: xwOBA, xBA, xSLG, hard-hit rate, barrel rate, and average exit velocity.",
+        "Command / Whiff": "Strikeout and command skill: K%, BB%, whiff rate, chase rate, first-pitch strike rate, and zone rate.",
+        "Season Performance": "Traditional season context: ERA, WHIP, FIP, K/9, BB/9, and HR/9.",
+        "Recent Form": "Recent workload and trend context: last-three-start ERA/WHIP/K, average IP, pitch count, and velocity trend.",
+        "Bullpen Rating": "Team run-prevention support after the starter exits. Currently uses team pitching indicators as a conservative bullpen proxy.",
+        "Offense vs Handedness": "Run-support context versus the opposing starter's throwing hand when available; falls back to neutral when split data is unavailable.",
+        "Confirmed Lineup Strength": "Confirmed batting-order context. Unknown pregame lineups are neutral to avoid fake certainty.",
+        "Weather Impact": "Game-time weather adjustment for pitcher-friendly or hitter-friendly conditions.",
+        "Park Context": "Ballpark run and home-run environment adjustment.",
+    }
+
+    return [
+        {
+            "component": label,
+            "weight": weight,
+            "weight_pct": f"{round(weight * 100)}%",
+            "purpose": purposes.get(label, ""),
+        }
+        for label, weight in WEIGHTS.items()
+    ]
+
+
 def _explanation_rows(away_profile: dict, home_profile: dict) -> list[dict]:
     rows = []
 
@@ -407,10 +450,33 @@ def _explanation_rows(away_profile: dict, home_profile: dict) -> list[dict]:
     return rows
 
 
-def _apply_context_scores(profile: dict, weather: dict, park: dict, lineup: dict) -> None:
+def _apply_context_scores(
+    profile: dict,
+    weather: dict,
+    park: dict,
+    lineup: dict,
+    bullpen: dict | None = None,
+    offense: dict | None = None,
+    confirmed_lineup: dict | None = None,
+) -> None:
     profile["component_scores"]["Weather Impact"] = weather.get("weather_score", 50.0)
     profile["component_scores"]["Park Context"] = park.get("park_score", 50.0)
+
+    # Keep the legacy BvP/lineup scaffold available for detail display, but do
+    # not allow placeholder BvP data to dominate the final model.
     profile["component_scores"]["Lineup Matchup"] = lineup.get("lineup_score", 50.0)
+
+    if bullpen is not None:
+        profile["component_scores"]["Bullpen Rating"] = bullpen.get("bullpen_score", 50.0)
+        profile.setdefault("context", {})["bullpen"] = bullpen
+
+    if offense is not None:
+        profile["component_scores"]["Offense vs Handedness"] = offense.get("offense_score", 50.0)
+        profile.setdefault("context", {})["offense_vs_handedness"] = offense
+
+    if confirmed_lineup is not None:
+        profile["component_scores"]["Confirmed Lineup Strength"] = confirmed_lineup.get("lineup_strength_score", 50.0)
+        profile.setdefault("context", {})["confirmed_lineup_strength"] = confirmed_lineup
 
 
 def build_matchup_prediction(game: dict) -> dict:
@@ -436,8 +502,51 @@ def build_matchup_prediction(game: dict) -> dict:
         opposing_side="away",
     )
 
-    _apply_context_scores(away_profile, away_weather, venue_context, away_lineup)
-    _apply_context_scores(home_profile, home_weather, venue_context, home_lineup)
+    away_bullpen = get_bullpen_context(game.get("away", {}).get("id"), game.get("away_team", "Away Team"))
+    home_bullpen = get_bullpen_context(game.get("home", {}).get("id"), game.get("home_team", "Home Team"))
+
+    away_offense = get_team_offense_vs_pitcher_hand_context(
+        team_id=game.get("away", {}).get("id"),
+        team_name=game.get("away_team", "Away Team"),
+        opposing_pitcher_id=game.get("home_pitcher_id"),
+    )
+    home_offense = get_team_offense_vs_pitcher_hand_context(
+        team_id=game.get("home", {}).get("id"),
+        team_name=game.get("home_team", "Home Team"),
+        opposing_pitcher_id=game.get("away_pitcher_id"),
+    )
+
+    away_confirmed_lineup = get_confirmed_lineup_strength_context(
+        game_id=game.get("game_id"),
+        side="away",
+        team_id=game.get("away", {}).get("id"),
+        team_name=game.get("away_team", "Away Team"),
+    )
+    home_confirmed_lineup = get_confirmed_lineup_strength_context(
+        game_id=game.get("game_id"),
+        side="home",
+        team_id=game.get("home", {}).get("id"),
+        team_name=game.get("home_team", "Home Team"),
+    )
+
+    _apply_context_scores(
+        away_profile,
+        away_weather,
+        venue_context,
+        away_lineup,
+        bullpen=away_bullpen,
+        offense=away_offense,
+        confirmed_lineup=away_confirmed_lineup,
+    )
+    _apply_context_scores(
+        home_profile,
+        home_weather,
+        venue_context,
+        home_lineup,
+        bullpen=home_bullpen,
+        offense=home_offense,
+        confirmed_lineup=home_confirmed_lineup,
+    )
 
     away_ip = _expected_innings(away_profile)
     home_ip = _expected_innings(home_profile)
@@ -474,7 +583,7 @@ def build_matchup_prediction(game: dict) -> dict:
         pitcher_advantage = "Even"
         edge_amount = 0
 
-    confidence = "Medium - model includes pitcher profile, weather, park context, and lineup/BvP scaffold"
+    confidence = "Medium - model includes pitcher profile, bullpen support, offense context, weather, park, and lineup availability"
     if min(_profile_reliability(away_profile), _profile_reliability(home_profile)) < 0.55:
         confidence = "Low-Medium - one or both pitchers have limited Statcast sample"
     elif abs(home_score - away_score) < 3:
@@ -513,5 +622,12 @@ def build_matchup_prediction(game: dict) -> dict:
         "home_weather": home_weather,
         "away_lineup": away_lineup,
         "home_lineup": home_lineup,
+        "away_bullpen": away_bullpen,
+        "home_bullpen": home_bullpen,
+        "away_offense_vs_handedness": away_offense,
+        "home_offense_vs_handedness": home_offense,
+        "away_confirmed_lineup_strength": away_confirmed_lineup,
+        "home_confirmed_lineup_strength": home_confirmed_lineup,
+        "model_weights": model_weight_table(),
         "score_breakdown": _explanation_rows(away_profile, home_profile),
     }

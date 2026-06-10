@@ -1,282 +1,218 @@
 {% extends "base.html" %}
 {% block content %}
 
-<section class="card">
-    <h2>About the PitchIQ Model</h2>
+<style>
+.model-hero {
+    margin: 12px auto 18px;
+    max-width: 1200px;
+}
 
+.model-hero h1 {
+    font-size: clamp(30px, 4vw, 48px);
+    line-height: 1.05;
+    margin: 0 0 8px;
+    color: #0f172a;
+}
+
+.model-hero p {
+    color: #64748b;
+    font-size: 16px;
+    max-width: 860px;
+}
+
+.model-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto 16px;
+}
+
+.model-card {
+    background: #ffffff;
+    border: 1px solid #dbe3ef;
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+}
+
+.model-card h2 {
+    margin: 0 0 12px;
+    color: #1d4ed8;
+    font-size: 18px;
+}
+
+.model-card ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.model-card li {
+    margin: 8px 0;
+}
+
+.model-kicker {
+    color: #2563eb;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.model-callout {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e3a8a;
+    font-weight: 800;
+    max-width: 900px;
+}
+
+.weight-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.weight-table th,
+.weight-table td {
+    border-bottom: 1px solid #e2e8f0;
+    padding: 9px 8px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.weight-table th {
+    color: #334155;
+    background: #f8fafc;
+}
+
+.weight-table td:first-child {
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.heat-demo {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.heat-pill {
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid #dbe3ef;
+}
+
+.heat-good { background: linear-gradient(135deg, #dcfce7, #bbf7d0); border-color: #86efac; }
+.heat-average { background: linear-gradient(135deg, #fef9c3, #fde68a); border-color: #facc15; }
+.heat-poor { background: linear-gradient(135deg, #fee2e2, #fecaca); border-color: #f87171; }
+.heat-neutral { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border-color: #cbd5e1; }
+
+.code-link {
+    display: inline-flex;
+    margin-top: 12px;
+    font-weight: 900;
+    color: #2563eb;
+    text-decoration: none;
+}
+
+@media (max-width: 850px) {
+    .model-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .heat-demo {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+</style>
+
+<section class="model-hero">
+    <div class="model-kicker">Model transparency</div>
+    <h1>PitchIQ model logic</h1>
     <p>
-        PitchIQ is designed as a transparent baseball analytics project. It compares probable starting pitchers using
-        season performance, recent form, Statcast-style quality indicators, command and whiff skill, lineup context,
-        ballpark factors, and weather.
+        PitchIQ is a pitcher-first matchup model that blends Statcast quality,
+        command and whiff skill, season performance, recent form, bullpen support,
+        team offense context, confirmed lineup availability, weather, and park factors.
     </p>
 
-    <p class="muted">
-        PitchIQ is a portfolio analytics project, not gambling advice. The model is pitcher-focused and does not fully
-        account for bullpen, defense, injuries, betting markets, or complete offensive projections.
-    </p>
+    <div class="model-callout">
+        Small samples are regressed toward league average, and unknown lineups stay neutral
+        instead of creating fake confidence.
+    </div>
 </section>
 
-<section class="card">
-    <h2>Formula & Stat Glossary</h2>
+<section class="model-grid">
+    <div class="model-card">
+        <h2>What's in the model</h2>
+        <ul>
+            <li><strong>Statcast quality:</strong> xwOBA, xBA, xSLG, HardHit%, Barrel%, and average exit velocity.</li>
+            <li><strong>Command / whiff:</strong> K%, BB%, whiff rate, chase rate, zone rate, and first-pitch strikes.</li>
+            <li><strong>Team context:</strong> bullpen support proxy, team offense context, and confirmed lineup availability.</li>
+            <li><strong>Run environment:</strong> park factors and game-time weather.</li>
+        </ul>
+        <a class="code-link" href="https://github.com/Floodplain4/PitchIQ/blob/main/app/services/model.py" target="_blank" rel="noopener">
+            View exact model logic on GitHub →
+        </a>
+    </div>
 
-    <div class="context-grid">
-        <div class="context-card" id="pitcher-advantage">
-            <span>Pitcher Advantage</span>
-            <strong>Which starter has the edge?</strong>
-            <p>The pitcher/team with the stronger PitchIQ matchup score. It is based on the score gap between the two probable starters.</p>
-        </div>
+    <div class="model-card">
+        <h2>Small-sample defense</h2>
+        <ul>
+            <li>Pitchers with limited Statcast samples are regressed toward league average.</li>
+            <li>Short expected workloads reduce a starter's ability to create a huge edge.</li>
+            <li>Unknown lineups stay neutral instead of being guessed.</li>
+            <li>Placeholder data is intentionally low-impact until better public data is available.</li>
+        </ul>
+    </div>
+</section>
 
-        <div class="context-card" id="pitchiq">
-            <span>PitchIQ</span>
-            <strong>Overall pitcher matchup score</strong>
-            <p>A 20-80 style score blending season performance, recent form, Statcast quality, command/whiff skill, lineup matchup, weather, and park context. Higher is better for the pitcher.</p>
-        </div>
+<section class="model-card" style="max-width:1200px; margin:0 auto 16px;">
+    <h2>Model weights</h2>
+    <table class="weight-table">
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Weight</th>
+                <th>Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Statcast Quality</td><td>26%</td><td>Expected contact quality allowed and batted-ball damage suppression.</td></tr>
+            <tr><td>Command / Whiff</td><td>18%</td><td>Strikeout ability, walk suppression, chase, whiff, and zone control.</td></tr>
+            <tr><td>Season Performance</td><td>12%</td><td>Traditional run-prevention context.</td></tr>
+            <tr><td>Recent Form</td><td>8%</td><td>Recent workload and trend context without overreacting.</td></tr>
+            <tr><td>Bullpen Rating</td><td>10%</td><td>Team pitching support after starter exit; currently a conservative team-pitching proxy.</td></tr>
+            <tr><td>Offense vs Handedness</td><td>10%</td><td>Run-support context versus opposing starter hand when available.</td></tr>
+            <tr><td>Confirmed Lineup Strength</td><td>8%</td><td>Lineup availability and completeness; unknown pregame lineups stay neutral.</td></tr>
+            <tr><td>Weather Impact</td><td>4%</td><td>Temperature, wind, humidity, pressure, and HR-risk conditions.</td></tr>
+            <tr><td>Park Context</td><td>4%</td><td>Ballpark run factor and home-run environment.</td></tr>
+        </tbody>
+    </table>
+</section>
 
-        <div class="context-card" id="win-probability">
-            <span>Win Probability</span>
-            <strong>Pitcher-focused probability</strong>
-            <p>Calculated from the PitchIQ score gap. This is conservative and pitcher-focused, not a full sportsbook-style win model.</p>
+<section class="model-grid">
+    <div class="model-card">
+        <h2>Heat color guide</h2>
+        <div class="heat-demo">
+            <div class="heat-pill heat-good"><strong>Excellent</strong><br>Top-tier pitcher outcome.</div>
+            <div class="heat-pill heat-average"><strong>Average</strong><br>Middle-band result.</div>
+            <div class="heat-pill heat-poor"><strong>Poor</strong><br>Risky pitcher outcome.</div>
+            <div class="heat-pill heat-neutral"><strong>Neutral</strong><br>Missing or unavailable data.</div>
         </div>
+    </div>
 
-        <div class="context-card" id="expected-ip">
-            <span>Expected IP</span>
-            <strong>Projected starter workload</strong>
-            <p>Starts with recent average innings, then adjusts modestly for pitch count, command, recent form, weather, and park context.</p>
-        </div>
-
-        <div class="context-card" id="k-projection">
-            <span>K Projection</span>
-            <strong>Projected strikeouts</strong>
-            <p>Estimated batters faced multiplied by adjusted strikeout rate. Recent strikeout form is only a small nudge so one hot stretch does not dominate the projection.</p>
-        </div>
-
-        <div class="context-card" id="quality-start">
-            <span>Quality Start</span>
-            <strong>Chance of 6+ IP and ≤3 ER</strong>
-            <p>Estimated from expected innings, season run prevention, recent form, Statcast quality, command, weather, and park context.</p>
-        </div>
-
-        <div class="context-card" id="model-role">
-            <span>Model Role</span>
-            <strong>Away SP / Home SP</strong>
-            <p>Shows whether the pitcher is being evaluated as the away starting pitcher or home starting pitcher.</p>
-        </div>
-
-        <div class="context-card" id="season-performance">
-            <span>Season Performance</span>
-            <strong>Season-level quality</strong>
-            <p>Component score using ERA, WHIP, FIP, and strikeout skill.</p>
-        </div>
-
-        <div class="context-card" id="recent-form">
-            <span>Recent Form</span>
-            <strong>Recent-start trend</strong>
-            <p>Component score using recent ERA, WHIP, strikeouts, average innings, pitch count, and velocity trend.</p>
-        </div>
-
-        <div class="context-card" id="statcast-quality">
-            <span>Statcast Quality</span>
-            <strong>Contact quality allowed</strong>
-            <p>Component score using xwOBA, xBA, xSLG, hard-hit rate, barrel rate, and average exit velocity.</p>
-        </div>
-
-        <div class="context-card" id="command---whiff">
-            <span>Command / Whiff</span>
-            <strong>Dominance and control</strong>
-            <p>Component score using K%, BB%, chase rate, and whiff rate.</p>
-        </div>
-
-        <div class="context-card" id="lineup-matchup">
-            <span>Lineup Matchup</span>
-            <strong>Opponent lineup context</strong>
-            <p>Pitcher-facing score for the opposing lineup. When official lineups are not available, the app uses a neutral/deterministic placeholder.</p>
-        </div>
-
-        <div class="context-card" id="weather-impact">
-            <span>Weather Impact</span>
-            <strong>Pitcher-facing weather score</strong>
-            <p>Considers temperature, humidity, wind, pressure, and HR-prone profiles. Pitcher-friendly conditions score higher.</p>
-        </div>
-
-        <div class="context-card" id="park-context">
-            <span>Park Context</span>
-            <strong>Ballpark run environment</strong>
-            <p>Pitcher-facing score based on run factor and home-run factor. Pitcher-friendly parks score higher.</p>
-        </div>
-
-        <div class="context-card" id="era">
-            <span>ERA</span>
-            <strong>Earned Run Average</strong>
-            <p>Earned runs allowed per nine innings. Lower is better for pitchers.</p>
-        </div>
-
-        <div class="context-card" id="whip">
-            <span>WHIP</span>
-            <strong>Walks + hits per inning</strong>
-            <p>Measures baserunners allowed. Lower is better.</p>
-        </div>
-
-        <div class="context-card" id="fip">
-            <span>FIP</span>
-            <strong>Fielding Independent Pitching</strong>
-            <p>Estimates pitcher run prevention from strikeouts, walks/HBP, and home runs while reducing defensive noise.</p>
-        </div>
-
-        <div class="context-card" id="k-9">
-            <span>K/9</span>
-            <strong>Strikeouts per nine innings</strong>
-            <p>Useful strikeout skill stat, but less direct than K% for projecting Ks because it depends on innings.</p>
-        </div>
-
-        <div class="context-card" id="bb-9">
-            <span>BB/9</span>
-            <strong>Walks per nine innings</strong>
-            <p>Lower is better.</p>
-        </div>
-
-        <div class="context-card" id="hr-9">
-            <span>HR/9</span>
-            <strong>Home runs per nine innings</strong>
-            <p>Lower is better, especially in hitter-friendly parks.</p>
-        </div>
-
-        <div class="context-card" id="last-3-era">
-            <span>Last 3 ERA</span>
-            <strong>Recent ERA</strong>
-            <p>ERA over the recent-start sample.</p>
-        </div>
-
-        <div class="context-card" id="last-3-whip">
-            <span>Last 3 WHIP</span>
-            <strong>Recent WHIP</strong>
-            <p>WHIP over the recent-start sample.</p>
-        </div>
-
-        <div class="context-card" id="last-3-k">
-            <span>Last 3 K</span>
-            <strong>Recent strikeouts</strong>
-            <p>Total strikeouts over the recent-start sample. Used lightly in the model.</p>
-        </div>
-
-        <div class="context-card" id="avg-ip">
-            <span>Avg IP</span>
-            <strong>Average innings</strong>
-            <p>Average innings per start in the recent-start sample.</p>
-        </div>
-
-        <div class="context-card" id="avg-pitch-count">
-            <span>Avg Pitch Count</span>
-            <strong>Recent workload</strong>
-            <p>Average recent pitch count. Higher pitch counts can support more expected innings.</p>
-        </div>
-
-        <div class="context-card" id="velocity-trend">
-            <span>Velocity Trend</span>
-            <strong>Recent velocity movement</strong>
-            <p>Estimated recent velocity movement compared with baseline. Positive is generally better.</p>
-        </div>
-
-        <div class="context-card" id="xwoba">
-            <span>xwOBA</span>
-            <strong>Expected weighted on-base allowed</strong>
-            <p>Expected weighted on-base average allowed based on contact quality and plate appearance outcomes. Lower is better.</p>
-        </div>
-
-        <div class="context-card" id="xba">
-            <span>xBA</span>
-            <strong>Expected batting average allowed</strong>
-            <p>Lower is better for pitchers.</p>
-        </div>
-
-        <div class="context-card" id="xslg">
-            <span>xSLG</span>
-            <strong>Expected slugging allowed</strong>
-            <p>Lower is better for pitchers.</p>
-        </div>
-
-        <div class="context-card" id="hardhitpct">
-            <span>HardHit%</span>
-            <strong>Hard-hit rate</strong>
-            <p>Percentage of batted balls hit 95+ mph. Lower is better.</p>
-        </div>
-
-        <div class="context-card" id="barrelpct">
-            <span>Barrel%</span>
-            <strong>Barrel rate</strong>
-            <p>Percentage of batted balls with ideal exit velocity and launch angle. Lower is better.</p>
-        </div>
-
-        <div class="context-card" id="avg-ev">
-            <span>Avg EV</span>
-            <strong>Average exit velocity allowed</strong>
-            <p>Lower is better for pitchers.</p>
-        </div>
-
-        <div class="context-card" id="gbpct">
-            <span>GB%</span>
-            <strong>Ground-ball percentage</strong>
-            <p>More ground balls can reduce extra-base damage.</p>
-        </div>
-
-        <div class="context-card" id="fbpct">
-            <span>FB%</span>
-            <strong>Fly-ball percentage</strong>
-            <p>Context dependent. High fly-ball rates can be risky in homer-friendly parks.</p>
-        </div>
-
-        <div class="context-card" id="ldpct">
-            <span>LD%</span>
-            <strong>Line-drive percentage</strong>
-            <p>Lower is usually better for pitchers.</p>
-        </div>
-
-        <div class="context-card" id="pullpct">
-            <span>Pull%</span>
-            <strong>Pulled-contact percentage</strong>
-            <p>High pull contact can indicate damage risk depending on hitter and park.</p>
-        </div>
-
-        <div class="context-card" id="oppopct">
-            <span>Oppo%</span>
-            <strong>Opposite-field contact percentage</strong>
-            <p>Share of contact hit to the opposite field.</p>
-        </div>
-
-        <div class="context-card" id="zonepct">
-            <span>Zone%</span>
-            <strong>Zone rate</strong>
-            <p>Percentage of pitches thrown in the strike zone.</p>
-        </div>
-
-        <div class="context-card" id="chasepct">
-            <span>Chase%</span>
-            <strong>Out-of-zone chase rate</strong>
-            <p>Percentage of out-of-zone pitches that batters swing at. Higher is better for pitchers.</p>
-        </div>
-
-        <div class="context-card" id="whiffpct">
-            <span>Whiff%</span>
-            <strong>Swing-and-miss rate</strong>
-            <p>Higher usually supports stronger strikeout projection.</p>
-        </div>
-
-        <div class="context-card" id="1stpitchspct">
-            <span>1stPitchS%</span>
-            <strong>First-pitch strike rate</strong>
-            <p>Getting ahead early generally improves pitcher outcomes.</p>
-        </div>
-
-        <div class="context-card" id="bbpct">
-            <span>BB%</span>
-            <strong>Walk rate</strong>
-            <p>Walks per plate appearance. Lower is better.</p>
-        </div>
-
-        <div class="context-card" id="kpct">
-            <span>K%</span>
-            <strong>Strikeout rate</strong>
-            <p>Strikeouts per plate appearance. One of the best anchors for strikeout projections because it is tied to batters faced.</p>
-        </div>
+    <div class="model-card">
+        <h2>What PitchIQ does not claim</h2>
+        <ul>
+            <li>It does not attempt to replicate Vegas odds.</li>
+            <li>It does not currently model injuries, umpire assignments, defense, or market movement.</li>
+            <li>It does not claim spin efficiency, VAA, Stuff+, or platoon splits unless those values are actually present in the code and UI.</li>
+        </ul>
     </div>
 </section>
 

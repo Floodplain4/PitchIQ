@@ -4,3 +4,5 @@ timestamp,game_id,game_date,away_team,home_team,away_score,home_score,predicted_
 2026-06-10T12:28:24,823372,2026-06-10T22:40:00Z,Los Angeles Dodgers,Pittsburgh Pirates,,,away,Los Angeles Dodgers,17.8,65.2,47.4,55.4,44.6,,,,,
 2026-06-10T12:57:30,824590,2026-06-10T23:40:00Z,Atlanta Braves,Chicago White Sox,,,away,Atlanta Braves,17.5,68.1,50.6,55.4,44.6,,,,,
 2026-06-10T13:54:06,824348,2026-06-11T00:40:00Z,Chicago Cubs,Colorado Rockies,,,away,Chicago Cubs,17.3,52.6,35.3,55.2,44.8,,,,,
+2026-06-10T15:33:35,822970,2026-06-10T17:10:00Z,Boston Red Sox,Tampa Bay Rays,,,home,Tampa Bay Rays,17.6,43.1,60.7,40.6,59.4,,,,,
+2026-06-10T15:35:01,824022,2026-06-11T01:38:00Z,Houston Astros,Los Angeles Angels,,,home,Los Angeles Angels,18.3,46.6,64.9,42.9,57.1,,,,,
