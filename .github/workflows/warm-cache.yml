@@ -12,5 +12,5 @@ jobs:
     steps:
       - name: Trigger cache refresh
         run: |
-          curl -v -X POST "https://pitchiq.site/api/refresh-homepage-secret" \
+          curl -v -X POST "https://www.pitchiq.site/api/refresh-homepage-secret" \
             -H "Authorization: Bearer ${{ secrets.REFRESH_KEY }}"
