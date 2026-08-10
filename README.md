@@ -147,6 +147,10 @@ PitchIQ is an active portfolio project.
 
 ---
 
+Maintenance: PitchIQ uses a scheduled GitHub Actions workflow to periodically warm application caches and reduce cold-start load times.
+
+---
+
 ## 🎯 Why This Project Exists
 
 Most publicly available betting and fantasy tools provide predictions without showing how those predictions were generated.
